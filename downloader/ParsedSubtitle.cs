@@ -82,9 +82,15 @@ public struct ParsedSubtitle {
 
     public override string ToString() {
         if (isMovie) {
-            return $"{title} ({year})";
+            if (year != 0) {
+                return $"{title} ({year})";
+            }
+            return $"{title}";
         }
-        return $"{title} ({year}) S{season} E{episode}";
+        if (year != 0) {
+            return $"{title} ({year}) S{season} E{episode}";
+        }
+        return $"{title} S{season} E{episode}";
     }
 
     private static bool isNumerical(string str) {

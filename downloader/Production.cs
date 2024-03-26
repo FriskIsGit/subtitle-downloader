@@ -8,7 +8,6 @@ public struct Production {
     public uint total;
     
     public string name;
-    public string pic;
     public string kind;
     public string rating;
 
@@ -18,7 +17,6 @@ public struct Production {
         production.year = uint.Parse(node["year"]?.ToString() ?? "");
         production.total = uint.Parse(node["total"]?.ToString() ?? "");
         production.id = node["id"]?.GetValue<uint>() ?? 0;
-        production.pic = node["pic"]?.ToString() ?? "";
         production.kind = node["kind"]?.ToString() ?? "";
         production.rating = node["rating"]?.ToString() ?? "";
         return production;

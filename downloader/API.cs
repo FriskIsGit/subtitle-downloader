@@ -5,16 +5,14 @@ namespace subtitle_downloader.downloader;
 
 public class API {
     private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
-    private const string SEARCH = "https://www.opensubtitles.org/en/search/sublanguageid-{}/idmovie-{}";
 
     private readonly HttpClient client = new() {
         Timeout = Timeout.InfiniteTimeSpan,
     };
 
-    public List<Production> getSuggestedMovies(string title, string language) {
+    public List<Production> getSuggestedMovies(string title) {
         var productions = new List<Production>();
-        language = toSubLanguageID(language);
-        string url = $"{SUBTITLE_SUGGEST}&MovieName={title}&SubLanguageID={language}";
+        string url = $"{SUBTITLE_SUGGEST}&MovieName={title}";
         var response = fetchJson(url);
         if (response.statusCode != HttpStatusCode.OK) {
             Console.WriteLine($"Status code: {response.statusCode}");
@@ -52,6 +50,7 @@ public class API {
             Method = HttpMethod.Get,
         };
         
+        getRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0 Gecko/20100101");
         getRequest.Headers.Accept.ParseAdd("application/json");
         var response = client.Send(getRequest);
         HttpStatusCode code = response.StatusCode;
@@ -59,42 +58,11 @@ public class API {
         return new SimpleResponse(code, content);
     }
     
-    public async Task<DownloadInfo> downloadFile(string url, string dir) {
-        HttpResponseMessage response = await client.GetAsync(url);
-        if (response.RequestMessage?.RequestUri is null) {
-            // Should never be here executed
-            return DownloadInfo.Failed();
-        }
-        string fileName = extractName(response.RequestMessage.RequestUri);
-        long contentLength = response.Content.Headers.ContentLength ?? 0;
-        await using var stream = await client.GetStreamAsync(response.RequestMessage.RequestUri);
-        await using var fs = new FileStream(Path.Combine(dir, fileName), FileMode.OpenOrCreate);
+    public async Task<bool> downloadSubtitle(SubtitleRow subtitle) {
+        await using var stream = await client.GetStreamAsync(subtitle.getFullURL());
+        await using var fs = new FileStream(subtitle.productionTitle + ".zip", FileMode.Create);
         await stream.CopyToAsync(fs);
-        return DownloadInfo.Ok(fileName, contentLength);
-    }
-    private static string extractName(Uri requestUri) {
-        int lastSlash = requestUri.LocalPath.LastIndexOf('/');
-        if (lastSlash == -1) {
-            return requestUri.LocalPath;
-        }
-        return requestUri.LocalPath[(lastSlash+1)..];
-    }
-}
-
-public struct DownloadInfo {
-    public string fileName { get; set; }
-    public long contentLength { get; set; }
-
-    private DownloadInfo(string fileName, long contentLength) {
-        this.fileName = fileName;
-        this.contentLength = contentLength;
-    }
-
-    public static DownloadInfo Ok(string fileName, long contentLength) {
-        return new DownloadInfo(fileName, contentLength);
-    }
-    public static DownloadInfo Failed() {
-        return new DownloadInfo("", 0);
+        return true;
     }
 }
 

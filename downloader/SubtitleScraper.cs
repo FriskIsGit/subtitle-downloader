@@ -22,36 +22,52 @@ public class SubtitleScraper {
             SubtitleRow subtitleRow = new SubtitleRow {
                 productionTitle = doc.ExtractText(strong)
             };
-            
-            var anchor = doc.FindFrom("a", strong.StartOffset, true);
+            subtitleRow.fixTitle();
+
+
+            var time = doc.FindFrom("time", strong.EndOffset + 100, true);
+            if (time is null) {
+                continue;
+            }
+            // Perhaps store time uploaded
+
+            var anchor = doc.FindFrom("a", time.StartOffset, true);
             if (anchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-
-            var href = anchor.GetAttribute("href");
-            if (href != null) {
-                subtitleRow.href = href;
-            }
             
-            var spanTitle = doc.FindFrom("span", anchor.StartOffset, true);
-            if (spanTitle is null) {
+            anchor = doc.FindFrom("a", time.StartOffset + 100, true);
+            if (anchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            
-            var title = spanTitle.GetAttribute("title");
-            if (title != null) {
-                subtitleRow.subtitleName = title;
+            var href = anchor.GetAttribute("href");
+            if (href != null) {
+                subtitleRow.downloadURL = href;
             }
 
-            var flagDiv = doc.FindFrom("div", spanTitle.StartOffset, true);
+            var formatSpan = doc.FindFrom("span", anchor.StartOffset, true);
+            if (formatSpan is null) {
+                subtitles.Add(subtitleRow);
+                continue;
+            }
+            subtitleRow.format = doc.ExtractText(formatSpan);
+            
+            var ratingSpan = doc.FindFrom("span", formatSpan.StartOffset + 20, true);
+            if (ratingSpan is null) {
+                subtitles.Add(subtitleRow);
+                continue;
+            }
+            subtitleRow.rating = double.Parse(doc.ExtractText(ratingSpan));
+            
+            /*var flagDiv = doc.FindFrom("div", formatSpan.StartOffset, true);
             if (flagDiv is null || flagDiv.Attributes.Count == 1) {
                 subtitles.Add(subtitleRow);
                 continue;
-            }
+            }*/
             
-            var flag = flagDiv.GetAttribute("class");
+            /*var flag = flagDiv.GetAttribute("class");
             if (flag != null) {
                 subtitleRow.flag = flag;
             }
@@ -61,31 +77,13 @@ public class SubtitleScraper {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            
-            var classHref = downloadAnchor.GetAttribute("class");
-            if (classHref != null) {
-                subtitleRow.downloadURL = classHref;
-            }
 
             string times = doc.ExtractText(downloadAnchor);
             int x = times.IndexOf('x');
             if (x != -1) {
                 subtitleRow.downloads = int.Parse(times[..x]);
-            }
+            }*/
             
-            var spanFormat = doc.FindFrom("span", downloadAnchor.StartOffset, false, ("class", "p"));
-            if (spanFormat is null) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            subtitleRow.format = doc.ExtractText(spanFormat);
-            
-            var spanVotes = doc.FindFrom("span", spanFormat.StartOffset + 4, true);
-            if (spanVotes is null) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            subtitleRow.rating = double.Parse(doc.ExtractText(spanVotes));
             
             subtitles.Add(subtitleRow);
         }
@@ -96,13 +94,33 @@ public class SubtitleScraper {
 }
 
 public class SubtitleRow {
+    private const string DOWNLOAD_URL = "https://dl.opensubtitles.org/en/download/sub/";
     public string productionTitle = "";
-    public string subtitleName = "";
-    public string href = "";
-    public string flag = "";
     public string downloadURL = "";
     public string format = "";
+    public string flag = "";
 
     public double rating;
     public int downloads;
+    
+    public void fixTitle() {
+        productionTitle = productionTitle.Replace('\n', ' ');
+    }
+
+    public override string ToString() {
+        
+        return $"{productionTitle} {getFullURL()} format:{format} rating:{rating}";
+    }
+
+    public string getFullURL() {
+        return $"{DOWNLOAD_URL}{getLastPart()}";
+    }
+
+    private string getLastPart() {
+        int slash = downloadURL.LastIndexOf('/');
+        if (slash == -1) {
+            return downloadURL;
+        }
+        return downloadURL[(slash+1)..];
+    }
 }
