@@ -1,4 +1,6 @@
-﻿namespace subtitle_downloader.downloader; 
+﻿using WebScrapper.scrapper;
+
+namespace subtitle_downloader.downloader; 
 
 class Program {
     public static void Main(string[] args) {
@@ -14,6 +16,7 @@ class Program {
 
         string language = args[0];
         var subtitle = ParsedSubtitle.Parse(args[1]);
+        string html = HtmlDoc.fetchHtml("");
         Console.WriteLine(subtitle);
     }
 
@@ -26,5 +29,10 @@ class Program {
         Console.WriteLine("Usage example:");
         Console.WriteLine("subtitles fr \"The Godfather (1972)\"");
         Console.WriteLine("subtitles fr \"The Office (2001)\" S9 E19");
+    }
+
+    // Extract .zip that contains the .srt files
+    public static void UnzipFile(string zipPath) {
+        System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, ".");
     }
 }

@@ -4,7 +4,8 @@ namespace subtitle_downloader.downloader;
 
 public struct ParsedSubtitle {
     public const string FORMAT = "Movie name (year) S2 E5";
-    
+    public const int MIN_YEAR = 1900;
+
     public string title = "";
     public uint year = 0;
 
@@ -14,24 +15,6 @@ public struct ParsedSubtitle {
     public uint episode = 0;
 
     public ParsedSubtitle() {
-    }
-
-    
-    public static ParsedSubtitle NewMovie(string title, uint year) {
-        return new ParsedSubtitle {
-            title = title,
-            year = year
-        };
-    }
-    
-    public static ParsedSubtitle NewShow(string title, uint year, uint season, uint episode) {
-        return new ParsedSubtitle {
-            title = title,
-            year = year,
-            isMovie = false,
-            season = season,
-            episode = episode,
-        };
     }
 
     // Expected format: Movie Name (year) S1 E5
@@ -55,11 +38,19 @@ public struct ParsedSubtitle {
                 }
 
                 string maybeYear = part[1..closing];
-                if (isNumerical(maybeYear)) {
-                    Console.WriteLine("Year is not numerical, skipping!");
+                if (!isNumerical(maybeYear)) {
+                    Console.WriteLine("The year is not numerical, skipping!");
+                    continue;
+                }
+                if (maybeYear.Length < 4) {
+                    Console.WriteLine("The year is too short, skipping!");
                     continue;
                 }
                 subtitle.year = uint.Parse(maybeYear);
+                if (subtitle.year < MIN_YEAR) {
+                    Console.WriteLine($"The first sound film was projected in {MIN_YEAR}");
+                    continue;
+                }
                 parsedProperty = true;
                 continue;
             }
@@ -90,6 +81,9 @@ public struct ParsedSubtitle {
     }
 
     public override string ToString() {
+        if (isMovie) {
+            return $"{title} ({year})";
+        }
         return $"{title} ({year}) S{season} E{episode}";
     }
 
