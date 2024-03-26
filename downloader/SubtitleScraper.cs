@@ -28,12 +28,10 @@ public class SubtitleScraper {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            
-            foreach (var attrib in anchor.Attributes) {
-                if (attrib.Item1 == "href") {
-                    subtitleRow.href = attrib.Item2;
-                    break;
-                }
+
+            var href = anchor.GetAttribute("href");
+            if (href != null) {
+                subtitleRow.href = href;
             }
             
             var spanTitle = doc.FindFrom("span", anchor.StartOffset, true);
@@ -42,36 +40,31 @@ public class SubtitleScraper {
                 continue;
             }
             
-            // Extract title attribute
-            foreach (var attrib in spanTitle.Attributes) {
-                if (attrib.Item1 == "title") {
-                    subtitleRow.subtitleName = attrib.Item2;
-                    break;
-                }
+            var title = spanTitle.GetAttribute("title");
+            if (title != null) {
+                subtitleRow.subtitleName = title;
             }
-            
+
             var flagDiv = doc.FindFrom("div", spanTitle.StartOffset, true);
             if (flagDiv is null || flagDiv.Attributes.Count == 1) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            foreach (var attrib in flagDiv.Attributes) {
-                if (attrib.Item1 == "class") {
-                    subtitleRow.flag = attrib.Item2;
-                    break;
-                }
-            }
             
+            var flag = flagDiv.GetAttribute("class");
+            if (flag != null) {
+                subtitleRow.flag = flag;
+            }
+
             var downloadAnchor = doc.FindFrom("a", flagDiv.StartOffset, true);
             if (downloadAnchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            foreach (var attrib in downloadAnchor.Attributes) {
-                if (attrib.Item1 == "href") {
-                    subtitleRow.downloadURL = attrib.Item2;
-                    break;
-                }
+            
+            var classHref = downloadAnchor.GetAttribute("class");
+            if (classHref != null) {
+                subtitleRow.downloadURL = classHref;
             }
 
             string times = doc.ExtractText(downloadAnchor);
