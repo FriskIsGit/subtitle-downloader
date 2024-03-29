@@ -73,11 +73,13 @@ public class SubtitleAPI {
             return response.Content.ReadAsStringAsync().Result;
         }
 
-        if (response.StatusCode == HttpStatusCode.MovedPermanently && response.Headers.Location != null) {
+        var statusCode = response.StatusCode;
+        if (response.Headers.Location != null && 
+            (statusCode == HttpStatusCode.MovedPermanently || statusCode == HttpStatusCode.Redirect)) {
             return fetchHtml(response.Headers.Location.ToString());
         }
-            
-        Console.WriteLine("Response Code: " + response.StatusCode);
+        
+        Console.WriteLine("Response Code: " + statusCode);
         return response.Content.ReadAsStringAsync().Result;
     }
     

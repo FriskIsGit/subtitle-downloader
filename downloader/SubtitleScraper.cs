@@ -9,7 +9,7 @@ public class SubtitleScraper {
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
             Console.WriteLine("Table is not in the page?");
-            return new List<SubtitleRow>();
+            return ScrapeDownloadButton(doc);
         }
 
         var subtitles = new List<SubtitleRow>();
@@ -71,6 +71,22 @@ public class SubtitleScraper {
         }
 
         return subtitles;
+    }
+
+    private static List<SubtitleRow> ScrapeDownloadButton(HtmlDoc doc) {
+        Tag? downloadAnchor = doc.Find("a", 
+            ("download", "download", Compare.EXACT),
+            ("href", "", Compare.KEY_ONLY));
+        if (downloadAnchor is null) {
+            Console.WriteLine("Download anchor not found");
+            return new List<SubtitleRow>();
+        }
+
+        SubtitleRow subtitle = new SubtitleRow();
+        subtitle.downloadURL = downloadAnchor.GetAttribute("href") ?? "";
+        subtitle.broadcastTitle = downloadAnchor.GetAttribute("data-product-title") ?? "";
+        
+        return new List<SubtitleRow>(1) { subtitle };
     }
 
 

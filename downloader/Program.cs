@@ -1,5 +1,4 @@
 ﻿using System.Text;
-using WebScrapper.scrapper;
 
 namespace subtitle_downloader.downloader;
 
