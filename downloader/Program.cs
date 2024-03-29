@@ -34,7 +34,7 @@ class Program {
         } else {
             string seasonsHtml = api.fetchHtml(pageUrl);
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
-            Console.WriteLine($"Scraped {seasons.Count} seasons");
+            prettyPrint(seasons);
             Episode episode = getRequestedEpisode(seasons, subtitle.season, subtitle.episode);
             Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
             downloadSubtitle(api, episode.getPageUrl(), episode.name);
@@ -58,7 +58,13 @@ class Program {
             fileName = bestSubtitle.broadcastTitle;
         }
         var download = api.downloadSubtitle(bestSubtitle, fileName);
-        download.Wait();
+        try {
+            download.Wait();
+        }
+        catch (Exception e) {
+            Console.WriteLine(e.Message);
+            Environment.Exit(0);
+        }
         
         string downloadedZip = fileName + ".zip";
          
@@ -74,24 +80,38 @@ class Program {
     private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
         uint seasonIndex = seasonNum - 1;
         if (seasonIndex >= seasons.Count) {
-            Console.WriteLine($"Season {seasonNum} was requested but only {seasons.Count} were found");
-            prettyPrint(seasons);
+            Console.WriteLine($"Season {seasonNum} was requested but only {seasons.Count} seasons were found");
             Environment.Exit(0);
         }
 
         Season season = seasons[(int)seasonIndex];
         uint episodeIndex = episodeNum - 1;
-        if (episodeIndex >= seasons.Count) {
-            Console.WriteLine($"Episode {episodeNum} was requested but only {season.episodes.Count} were found");
-            prettyPrint(seasons);
+        if (episodeIndex >= season.episodes.Count) {
+            Console.WriteLine($"Episode {episodeNum} was requested but only {season.episodes.Count} episodes were found");
             Environment.Exit(0);
         }
 
         return season.episodes[(int)episodeIndex];
     }
 
+    const int EPISODE_LIMIT = 20;
     private static void prettyPrint(List<Season> seasons) {
-        
+        bool truncated = false;
+        foreach (var season in seasons) {
+            Console.WriteLine($"Season [{season.number}] Episodes: {season.episodes.Count}");
+            foreach (Episode episode in season.episodes) {
+                Console.WriteLine($"  {episode.number}. {episode.name}");
+            }
+
+            Console.WriteLine("----------------------------------------------");
+            if (season.episodes.Count > EPISODE_LIMIT) {
+                truncated = true;
+            }
+        }
+
+        if (truncated) {
+            Console.WriteLine($"Episodes were truncated to {EPISODE_LIMIT}");
+        }
     }
     
     private static string createSubtitleUrl(string language, uint prodId) {
@@ -111,7 +131,6 @@ class Program {
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows) {
-        // Choose based on total (popularity?)
         SubtitleRow bestSubtitle = new SubtitleRow();
         double max = 0;
         foreach (var subtitle in rows) {
@@ -124,6 +143,18 @@ class Program {
             }
         }
 
+        if (max == 0) {
+            // Choose based on most downloads (popularity)
+            foreach (var subtitle in rows) {
+                if (subtitle.format != "" && subtitle.format != "srt" ) {
+                    continue;
+                }
+                if (subtitle.downloads > max) {
+                    max = subtitle.downloads;
+                    bestSubtitle = subtitle;
+                }
+            }
+        }
         return max == 0 ? rows[0] : bestSubtitle;
     }
 

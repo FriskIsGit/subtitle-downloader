@@ -8,7 +8,6 @@ public class SubtitleScraper {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
-            Console.WriteLine("Table is not in the page?");
             return ScrapeDownloadButton(doc);
         }
 
@@ -206,6 +205,7 @@ public class SubtitleRow {
     
     public void fixTitle() {
         broadcastTitle = broadcastTitle.Replace('\n', ' ');
+        broadcastTitle = broadcastTitle.Trim();
     }
 
     public override string ToString() {

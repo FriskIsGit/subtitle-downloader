@@ -84,10 +84,31 @@ public class SubtitleAPI {
     }
     
     public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string fileName) {
-        await using var stream = await client.GetStreamAsync(subtitle.getFullURL());
+        string resourceUrl = subtitle.getFullURL();
+        HttpResponseMessage response = await client.GetAsync(resourceUrl);
+        if (response.RequestMessage?.RequestUri is null) {
+            // Should never be here executed
+            return false;
+        }
+        
+        switch (response.StatusCode) {
+            case HttpStatusCode.MovedPermanently:
+                Console.WriteLine("Captcha? (301). Downgrading to HTTP");
+                resourceUrl = downgradeUrl(resourceUrl);
+                break;
+            case HttpStatusCode.TooManyRequests:
+                Console.WriteLine("Too many requests (429)");
+                Console.WriteLine(response.Content);
+                return false;
+        }
+        await using var stream = await client.GetStreamAsync(resourceUrl);
         await using var fs = new FileStream(fileName + ".zip", FileMode.Create);
         await stream.CopyToAsync(fs);
         return true;
+    }
+
+    public static string downgradeUrl(string url) {
+        return url.Replace("https", "http");
     }
 }
 
