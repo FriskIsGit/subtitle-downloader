@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader;
 
 class Program {
-    private const string VERSION = "1.0.0";
+    private const string VERSION = "1.0.1";
     public static void Main(string[] args) {
         if (args.Length == 0) {
             PrintHelp();
@@ -99,7 +99,8 @@ class Program {
         bool truncated = false;
         foreach (var season in seasons) {
             Console.WriteLine($"Season [{season.number}] Episodes: {season.episodes.Count}");
-            foreach (Episode episode in season.episodes) {
+            for (int e = 0; e < season.episodes.Count && e < EPISODE_LIMIT; e++) {
+                Episode episode = season.episodes[e];
                 Console.WriteLine($"  {episode.number}. {episode.name}");
             }
 
@@ -257,11 +258,12 @@ class Program {
 
     private static void PrintHelp() {
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{VERSION}");
+        Console.WriteLine();
         Console.WriteLine("Commands:");
         Console.WriteLine("    <language> <movie name> (<year>)");
         Console.WriteLine("    <language> <show name> (<year>) S<season> E<episode>");
         Console.WriteLine("    <language> <show name> S<season> E<episode>");
-
+        Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine("  subtitles french The Godfather (1972)");
         Console.WriteLine("  subtitles french Office (2005) S9 E19");
