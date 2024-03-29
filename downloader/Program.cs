@@ -30,29 +30,40 @@ class Program {
         productions = filterByKind(productions, subtitle.isMovie);
         Production prod = selectProduction(productions, subtitle);
         Console.WriteLine("Selected: " + prod);
-        string language = API.toSubLanguageID(args[0]);
-        Console.WriteLine("Language id: " + prod);
-        string searchURL = $"https://www.opensubtitles.org/en/search/sublanguageid-{language}/idmovie-{prod.id}";
+        string searchURL = createSubtitleUrl(args[0], prod.id);
         string html = HtmlDoc.fetchHtml(searchURL);
-        Console.WriteLine($"SEARCH URL: {searchURL}");
-        List<SubtitleRow> rows = SubtitleScraper.ScrapeTable(html);
-        if (rows.Count == 0) {
-            Console.WriteLine("No subtitle elements were scraped");
-            return;
+        Console.WriteLine($"Scraping: {searchURL}");
+        
+        if (subtitle.isMovie) {
+            List<SubtitleRow> rows = SubtitleScraper.ScrapeTableMovie(html);
+            if (rows.Count == 0) {
+                Console.WriteLine("No subtitle elements were scraped");
+                return;
+            }
+            SubtitleRow bestSubtitle = selectSubtitle(rows);
+            Console.WriteLine(bestSubtitle);
+            var download = api.downloadSubtitle(bestSubtitle);
+            download.Wait();
+            string downloadedZip = bestSubtitle.movieTitle + ".zip";
+            if (download.Result) {
+                Console.WriteLine("Unzipping..");
+                UnzipFile(downloadedZip);
+            }
+            Console.WriteLine("Cleaning up..");
+            File.Delete(downloadedZip);
+            cleanupNFOs();
+        } else {
+            Season season = SubtitleScraper.ScrapeTableSeries(html, subtitle.season);
+            Console.WriteLine(season);
         }
-        SubtitleRow bestSubtitle = selectSubtitle(rows);
-        Console.WriteLine(bestSubtitle);
-        var download = api.downloadSubtitle(bestSubtitle);
-        download.Wait();
-        string downloadedZip = bestSubtitle.productionTitle + ".zip";
-        if (download.Result) {
-            Console.WriteLine("Unzipping..");
-            UnzipFile(downloadedZip);
-        }
-        Console.WriteLine("Cleaning up..");
-        File.Delete(downloadedZip);
-        cleanupNFOs();
+        
         Console.WriteLine("Finished");
+    }
+
+    private static string createSubtitleUrl(string language, uint prodId) {
+        string languageId = API.toSubLanguageID(language);
+        Console.WriteLine("Language id: " + languageId);
+        return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
     private static void cleanupNFOs() {
@@ -79,11 +90,7 @@ class Program {
             }
         }
 
-        if (max == 0) {
-            return rows[0];
-        }
-        
-        return bestSubtitle;
+        return max == 0 ? rows[0] : bestSubtitle;
     }
 
     private static string concatenateRemainingArgs(string[] args, int from) {

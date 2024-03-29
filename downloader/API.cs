@@ -60,7 +60,7 @@ public class API {
     
     public async Task<bool> downloadSubtitle(SubtitleRow subtitle) {
         await using var stream = await client.GetStreamAsync(subtitle.getFullURL());
-        await using var fs = new FileStream(subtitle.productionTitle + ".zip", FileMode.Create);
+        await using var fs = new FileStream(subtitle.movieTitle + ".zip", FileMode.Create);
         await stream.CopyToAsync(fs);
         return true;
     }

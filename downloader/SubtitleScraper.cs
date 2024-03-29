@@ -4,7 +4,7 @@ namespace subtitle_downloader.downloader;
 
 public class SubtitleScraper {
     
-    public static List<SubtitleRow> ScrapeTable(string html) {
+    public static List<SubtitleRow> ScrapeTableMovie(string html) {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
@@ -13,89 +13,130 @@ public class SubtitleScraper {
         }
 
         var subtitles = new List<SubtitleRow>();
-        List<Tag> tableRows = doc.FindAllFrom("tr", tableBody.StartOffset, true);
+        List<Tag> tableRows = doc.ExtractTags(tableBody, "tr");
         foreach (var tr in tableRows) {
-            var strong = doc.FindFrom("strong", tr.StartOffset, true);
+            var id = tr.GetAttribute("id");
+            if (id is null || !id.StartsWith("name")) {
+                continue;
+            }
+            
+            var strong = doc.FindFrom("strong", tr.StartOffset + 100);
             if (strong is null) {
                 continue;
             }
             SubtitleRow subtitleRow = new SubtitleRow {
-                productionTitle = doc.ExtractText(strong)
+                movieTitle = doc.ExtractText(strong)
             };
             subtitleRow.fixTitle();
-
-
-            var time = doc.FindFrom("time", strong.EndOffset + 100, true);
-            if (time is null) {
-                continue;
-            }
-            // Perhaps store time uploaded
-
-            var anchor = doc.FindFrom("a", time.StartOffset, true);
-            if (anchor is null) {
+            
+            var flagDiv = doc.FindFrom("div", strong.EndOffset, ("class", "flag", Compare.VALUE_STARTS_WITH));
+            if (flagDiv != null) {
+                subtitleRow.flag = flagDiv.GetAttribute("class") ?? "";
+            } else {
                 subtitles.Add(subtitleRow);
                 continue;
             }
             
-            anchor = doc.FindFrom("a", time.StartOffset + 100, true);
-            if (anchor is null) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            var href = anchor.GetAttribute("href");
-            if (href != null) {
-                subtitleRow.downloadURL = href;
-            }
-
-            var formatSpan = doc.FindFrom("span", anchor.StartOffset, true);
-            if (formatSpan is null) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            subtitleRow.format = doc.ExtractText(formatSpan);
-            
-            var ratingSpan = doc.FindFrom("span", formatSpan.StartOffset + 20, true);
-            if (ratingSpan is null) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            subtitleRow.rating = double.Parse(doc.ExtractText(ratingSpan));
-            
-            /*var flagDiv = doc.FindFrom("div", formatSpan.StartOffset, true);
-            if (flagDiv is null || flagDiv.Attributes.Count == 1) {
-                subtitles.Add(subtitleRow);
-                continue;
-            }*/
-            
-            /*var flag = flagDiv.GetAttribute("class");
-            if (flag != null) {
-                subtitleRow.flag = flag;
-            }
-
-            var downloadAnchor = doc.FindFrom("a", flagDiv.StartOffset, true);
+            var downloadAnchor = doc.FindFrom("a", flagDiv.StartOffset + 10, 
+                ("href", "", Compare.KEY_ONLY), ("onclick", "", Compare.KEY_ONLY));
             if (downloadAnchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
+            subtitleRow.downloadURL = downloadAnchor.GetAttribute("href") ?? "";
+            string timesDownloaded = doc.ExtractText(downloadAnchor);
+            int x = timesDownloaded.IndexOf('x');
+            try {
+                subtitleRow.downloads = int.Parse(timesDownloaded[..x]);
+            }catch { }
 
-            string times = doc.ExtractText(downloadAnchor);
-            int x = times.IndexOf('x');
-            if (x != -1) {
-                subtitleRow.downloads = int.Parse(times[..x]);
-            }*/
+            var extensionSpan = doc.FindFrom("span", downloadAnchor.EndOffset, ("class", "p", Compare.EXACT));
+            if (extensionSpan is null) {
+                subtitles.Add(subtitleRow);
+                continue;
+            }
+            subtitleRow.format = doc.ExtractText(extensionSpan);
             
+            var ratingSpan = doc.FindFrom("span", extensionSpan.EndOffset, ("title", "", Compare.KEY_ONLY));
+            if (ratingSpan is null) {
+                subtitles.Add(subtitleRow);
+                continue;
+            }
+            string ratingExtracted = doc.ExtractText(ratingSpan);
+            try {
+                subtitleRow.rating = double.Parse(ratingExtracted);
+            } catch { }
             
             subtitles.Add(subtitleRow);
         }
+
         return subtitles;
     }
-    
-    
+
+
+    public static Season ScrapeTableSeries(string html, uint seasonNumber) {
+        var doc = new HtmlDoc(html);
+        Tag? tableBody = doc.Find("tbody");
+        if (tableBody is null) {
+            throw new Exception("<tbody> not found in the page, how's the page structured?");
+        }
+
+        List<Tag> tableRows = doc.ExtractTags(tableBody, "tr");
+
+
+        Season season = new Season();
+        foreach (var tr in tableRows) {
+            if (tr.Attributes.Count != 0) {
+                continue;
+            }
+
+            Tag? seasonTag = doc.FindFrom("span", tr.StartOffset + 2, ("id", "season", Compare.VALUE_STARTS_WITH));
+            if (seasonTag is null) {
+                continue;
+            }
+
+            string seasonStr = seasonTag.GetAttribute("id") ?? "";
+            int dash = seasonStr.IndexOf('-');
+            if (dash == -1) {
+                continue;
+            }
+
+            try {
+                season.number = int.Parse(seasonStr[(dash + 1)..]);
+            }
+            catch { }
+
+            Tag? seasonAnchor = doc.FindFrom("a", seasonTag.StartOffset + 10, ("href", "", Compare.KEY_ONLY));
+            if (seasonAnchor is null) {
+                continue;
+            }
+
+            if (seasonAnchor.Attributes.Count > 1) {
+                seasonAnchor = doc.FindFrom("a", seasonAnchor.StartOffset + 10, ("href", "", Compare.KEY_ONLY));
+                if (seasonAnchor is null) {
+                    continue;
+                }
+            }
+            
+            string url = seasonAnchor.GetAttribute("href") ?? "";
+            if (url.StartsWith("/download/")) {
+                season.wholeDownload = true;
+                season.packageDownloadUrl = url;
+            }
+            
+            if (season.number == seasonNumber) {
+                break;
+            }
+        }
+
+        return season;
+    }
 }
 
 public class SubtitleRow {
     private const string DOWNLOAD_URL = "https://dl.opensubtitles.org/en/download/sub/";
-    public string productionTitle = "";
+    // title is either movie name or episode name
+    public string movieTitle = "";
     public string downloadURL = "";
     public string format = "";
     public string flag = "";
@@ -104,12 +145,12 @@ public class SubtitleRow {
     public int downloads;
     
     public void fixTitle() {
-        productionTitle = productionTitle.Replace('\n', ' ');
+        movieTitle = movieTitle.Replace('\n', ' ');
     }
 
     public override string ToString() {
         
-        return $"{productionTitle} {getFullURL()} format:{format} rating:{rating}";
+        return $"{movieTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
 
     public string getFullURL() {
@@ -123,4 +164,23 @@ public class SubtitleRow {
         }
         return downloadURL[(slash+1)..];
     }
+}
+
+public class Season {
+    private const string DOMAIN = "https://opensubtitles.org";
+    public int number = 0;
+    
+    public bool wholeDownload = false;
+    public string packageDownloadUrl = "";
+
+    public override string ToString() {
+        if (wholeDownload) {
+            return $"S{number} {DOMAIN}{packageDownloadUrl}";
+        }
+        return $"S{number}";
+    }
+}
+public class Episode {
+    public int number = 0;
+    public string url = "";
 }
