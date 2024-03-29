@@ -1,9 +1,10 @@
 ﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader; 
 
-public class API {
+public class SubtitleAPI {
     private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
 
     private readonly HttpClient client = new() {
@@ -58,9 +59,31 @@ public class API {
         return new SimpleResponse(code, content);
     }
     
-    public async Task<bool> downloadSubtitle(SubtitleRow subtitle) {
+    public string fetchHtml(string url) {
+        var getRequest = new HttpRequestMessage {
+            RequestUri = new Uri(url),
+            Method = HttpMethod.Get,
+        };
+        getRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0 Gecko/20100101");
+        getRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
+        getRequest.Headers.AcceptLanguage.ParseAdd("en-US;q=0.7");
+        getRequest.Headers.Add("Set-GPC", "1");
+        var response = client.Send(getRequest);
+        if (response.StatusCode == HttpStatusCode.OK) {
+            return response.Content.ReadAsStringAsync().Result;
+        }
+
+        if (response.StatusCode == HttpStatusCode.MovedPermanently && response.Headers.Location != null) {
+            return fetchHtml(response.Headers.Location.ToString());
+        }
+            
+        Console.WriteLine("Response Code: " + response.StatusCode);
+        return response.Content.ReadAsStringAsync().Result;
+    }
+    
+    public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string fileName) {
         await using var stream = await client.GetStreamAsync(subtitle.getFullURL());
-        await using var fs = new FileStream(subtitle.movieTitle + ".zip", FileMode.Create);
+        await using var fs = new FileStream(fileName + ".zip", FileMode.Create);
         await stream.CopyToAsync(fs);
         return true;
     }

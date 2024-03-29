@@ -4,7 +4,7 @@ namespace subtitle_downloader.downloader;
 
 public struct ParsedSubtitle {
     public const string FORMAT = "Movie name (year) S2 E5";
-    public const int MIN_YEAR = 1900;
+    private const int MIN_YEAR = 1900;
 
     public string title = "";
     public uint year = 0;
@@ -61,7 +61,7 @@ public struct ParsedSubtitle {
                 parsedProperty = true;
                 continue;
             }
-            if ((part.StartsWith('E') || part.StartsWith('s')) && part.Length > 1 && isNumerical(part[1])) {
+            if ((part.StartsWith('E') || part.StartsWith('e')) && part.Length > 1 && isNumerical(part[1])) {
                 subtitle.episode = uint.Parse(part[1..]);
                 subtitle.isMovie = false;
                 parsedProperty = true;

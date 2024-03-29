@@ -2,6 +2,7 @@
 
 namespace subtitle_downloader.downloader; 
 
+// Retrieved as part of JSON response from suggest.php
 public struct Production {
     public uint id;
     public uint year;

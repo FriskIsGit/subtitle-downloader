@@ -4,7 +4,7 @@ namespace subtitle_downloader.downloader;
 
 public class SubtitleScraper {
     
-    public static List<SubtitleRow> ScrapeTableMovie(string html) {
+    public static List<SubtitleRow> ScrapeSubtitleTable(string html) {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
@@ -25,7 +25,7 @@ public class SubtitleScraper {
                 continue;
             }
             SubtitleRow subtitleRow = new SubtitleRow {
-                movieTitle = doc.ExtractText(strong)
+                broadcastTitle = doc.ExtractText(strong)
             };
             subtitleRow.fixTitle();
             
@@ -74,7 +74,7 @@ public class SubtitleScraper {
     }
 
 
-    public static Season ScrapeTableSeries(string html, uint seasonNumber) {
+    public static List<Season> ScrapeSeriesTable(string html) {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
@@ -83,9 +83,11 @@ public class SubtitleScraper {
 
         List<Tag> tableRows = doc.ExtractTags(tableBody, "tr");
 
-
-        Season season = new Season();
+        List<Season> seasons = new();
+        
+        // 1. Scrape season packages
         foreach (var tr in tableRows) {
+            Season season = new Season();
             if (tr.Attributes.Count != 0) {
                 continue;
             }
@@ -123,20 +125,62 @@ public class SubtitleScraper {
                 season.wholeDownload = true;
                 season.packageDownloadUrl = url;
             }
-            
-            if (season.number == seasonNumber) {
-                break;
-            }
+            seasons.Add(season);
         }
 
-        return season;
+        int seasonNumber = 0;
+        // Scrape episodes
+        foreach (var tr in tableRows) {
+            if (tr.Attributes.Count == 0) {
+                seasonNumber++;
+                continue;
+            }
+
+            string? prop = tr.GetAttribute("itemprop");
+            if (prop is not "episode") {
+                continue;
+            }
+
+            Tag? spanEpisodeNumber = doc.FindFrom("span", tr.StartOffset + 10, ("itemprop", "episodeNumber", Compare.EXACT));
+            if (spanEpisodeNumber is null) {
+                continue;
+            }
+
+            Episode episode = new Episode();
+            string episodeStr = doc.ExtractText(spanEpisodeNumber);
+            try {
+                episode.number = int.Parse(episodeStr);
+            }
+            catch { continue; }
+            
+            Tag? episodeInfo = doc.FindFrom("a", spanEpisodeNumber.StartOffset + 10, 
+                ("itemprop", "url", Compare.EXACT),
+                ("href", "", Compare.KEY_ONLY));
+            if (episodeInfo is null) {
+                continue;
+            }
+            episode.url = episodeInfo.GetAttribute("href") ?? "";
+
+            Tag? episodeName = doc.FindFrom("span", episodeInfo.StartOffset + 10,
+                ("itemprop", "name", Compare.EXACT));
+            if (episodeName is null) {
+                continue;
+            }
+            episode.name = doc.ExtractText(episodeName);
+
+            int seasonIndex = seasonNumber - 1;
+            Season season = seasons[seasonIndex];
+            season.episodes.Add(episode);
+        }
+
+        return seasons;
     }
 }
 
 public class SubtitleRow {
     private const string DOWNLOAD_URL = "https://dl.opensubtitles.org/en/download/sub/";
     // title is either movie name or episode name
-    public string movieTitle = "";
+    public string broadcastTitle = "";
     public string downloadURL = "";
     public string format = "";
     public string flag = "";
@@ -145,12 +189,11 @@ public class SubtitleRow {
     public int downloads;
     
     public void fixTitle() {
-        movieTitle = movieTitle.Replace('\n', ' ');
+        broadcastTitle = broadcastTitle.Replace('\n', ' ');
     }
 
     public override string ToString() {
-        
-        return $"{movieTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
+        return $"{broadcastTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
 
     public string getFullURL() {
@@ -168,9 +211,10 @@ public class SubtitleRow {
 
 public class Season {
     private const string DOMAIN = "https://opensubtitles.org";
-    public int number = 0;
-    
-    public bool wholeDownload = false;
+    public int number;
+    public List<Episode> episodes = new();
+
+    public bool wholeDownload;
     public string packageDownloadUrl = "";
 
     public override string ToString() {
@@ -181,6 +225,12 @@ public class Season {
     }
 }
 public class Episode {
+    private const string DOMAIN = "https://opensubtitles.org";
     public int number = 0;
+    public string name = "";
     public string url = "";
+
+    public string getPageUrl() {
+        return $"{DOMAIN}{url}";
+    }
 }

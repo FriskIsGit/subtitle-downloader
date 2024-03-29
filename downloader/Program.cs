@@ -18,50 +18,85 @@ class Program {
 
         string remaining = concatenateRemainingArgs(args, 1);
         var subtitle = ParsedSubtitle.Parse(remaining);
-        Console.WriteLine(subtitle);
 
-        var api = new API();
+        var api = new SubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(subtitle.title);
         if (productions.Count == 0) {
             Console.WriteLine("No productions found, implement fallback?");
             return;
         }
-
-        productions = filterByKind(productions, subtitle.isMovie);
+        
         Production prod = selectProduction(productions, subtitle);
         Console.WriteLine("Selected: " + prod);
-        string searchURL = createSubtitleUrl(args[0], prod.id);
-        string html = HtmlDoc.fetchHtml(searchURL);
-        Console.WriteLine($"Scraping: {searchURL}");
-        
+        string pageUrl = createSubtitleUrl(args[0], prod.id);
+
         if (subtitle.isMovie) {
-            List<SubtitleRow> rows = SubtitleScraper.ScrapeTableMovie(html);
-            if (rows.Count == 0) {
-                Console.WriteLine("No subtitle elements were scraped");
-                return;
-            }
-            SubtitleRow bestSubtitle = selectSubtitle(rows);
-            Console.WriteLine(bestSubtitle);
-            var download = api.downloadSubtitle(bestSubtitle);
-            download.Wait();
-            string downloadedZip = bestSubtitle.movieTitle + ".zip";
-            if (download.Result) {
-                Console.WriteLine("Unzipping..");
-                UnzipFile(downloadedZip);
-            }
-            Console.WriteLine("Cleaning up..");
-            File.Delete(downloadedZip);
-            cleanupNFOs();
+            downloadSubtitle(api, pageUrl);
         } else {
-            Season season = SubtitleScraper.ScrapeTableSeries(html, subtitle.season);
-            Console.WriteLine(season);
+            string seasonsHtml = api.fetchHtml(pageUrl);
+            List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
+            Console.WriteLine($"Scraped {seasons.Count} seasons");
+            Episode episode = getRequestedEpisode(seasons, subtitle.season, subtitle.episode);
+            Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
+            downloadSubtitle(api, episode.getPageUrl(), episode.name);
         }
         
         Console.WriteLine("Finished");
     }
 
+    private static void downloadSubtitle(SubtitleAPI api, string pageURL, string? fileName = null) {
+        string html = api.fetchHtml(pageURL);
+        Console.WriteLine($"Scraping: {pageURL}");
+
+        List<SubtitleRow> rows = SubtitleScraper.ScrapeSubtitleTable(html);
+        if (rows.Count == 0) {
+            Console.WriteLine("No subtitle elements were scraped");
+            return;
+        }
+        SubtitleRow bestSubtitle = selectSubtitle(rows);
+        Console.WriteLine(bestSubtitle);
+        if (fileName is null) {
+            fileName = bestSubtitle.broadcastTitle;
+        }
+        var download = api.downloadSubtitle(bestSubtitle, fileName);
+        download.Wait();
+        
+        string downloadedZip = fileName + ".zip";
+         
+        if (download.Result) {
+            Console.WriteLine("Unzipping..");
+            UnzipFile(downloadedZip);
+        }
+        Console.WriteLine("Cleaning up..");
+        File.Delete(downloadedZip);
+        cleanupNFOs();
+    }
+    
+    private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
+        uint seasonIndex = seasonNum - 1;
+        if (seasonIndex >= seasons.Count) {
+            Console.WriteLine($"Season {seasonNum} was requested but only {seasons.Count} were found");
+            prettyPrint(seasons);
+            Environment.Exit(0);
+        }
+
+        Season season = seasons[(int)seasonIndex];
+        uint episodeIndex = episodeNum - 1;
+        if (episodeIndex >= seasons.Count) {
+            Console.WriteLine($"Episode {episodeNum} was requested but only {season.episodes.Count} were found");
+            prettyPrint(seasons);
+            Environment.Exit(0);
+        }
+
+        return season.episodes[(int)episodeIndex];
+    }
+
+    private static void prettyPrint(List<Season> seasons) {
+        
+    }
+    
     private static string createSubtitleUrl(string language, uint prodId) {
-        string languageId = API.toSubLanguageID(language);
+        string languageId = SubtitleAPI.toSubLanguageID(language);
         Console.WriteLine("Language id: " + languageId);
         return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
@@ -108,8 +143,12 @@ class Program {
     }
     
     private static Production selectProduction(List<Production> productions, ParsedSubtitle desiredSubtitle) {
-        if (productions.Count == 1) {
-            return productions[0];
+        productions = filterByKind(productions, desiredSubtitle.isMovie);
+        switch (productions.Count) {
+            case 0:
+                throw new Exception("No productions remained after filtering");
+            case 1:
+                return productions[0];
         }
 
         if (desiredSubtitle.year != 0) {
@@ -172,13 +211,13 @@ class Program {
         return bestProduction;
     }
 
-    private static List<Production> filterByKind(List<Production> productions, bool isMovie) {
+    private static List<Production> filterByKind(List<Production> productions, bool keepMovies) {
         var filtered = new List<Production>();
         foreach (var prod in productions) {
-            if (prod.kind == "movie" && isMovie) {
+            if (prod.kind == "movie" && keepMovies) {
                 filtered.Add(prod);
             }
-            else if (prod.kind == "tv" && !isMovie) {
+            else if (prod.kind == "tv" && !keepMovies) {
                 filtered.Add(prod);
             }
         }
