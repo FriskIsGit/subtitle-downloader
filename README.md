@@ -1,17 +1,22 @@
 ﻿# Subtitle downloader
 
+### Usage
+- `<production title> [options...]`
 ### Arguments
-- `<language> <production info>`
+- `-s, -S, --season` - season number (required for tv series)
+- `-e, -E, --episode` - episode number (required for tv series)
+- `-l, --lang` - specifies subtitle language (kinda required)
+- `-y, --year` - the year a movie or a tv series was released (optional)
+
 ### Examples
 
 Fetching movie subtitles
 ```bash
-`./subtitles spanish Godfather (1972)`
+`./subtitles Godfather -y1972 --lang spanish`
 ```
 
 Fetching TV show subtitles
 ```bash
-`./subtitles chinese The Gentlemen S1 E3`
+`./subtitles "The Gentlemen" -S1 -E3` --lang chinese
 ```
 
-The year argument is optional, if specified must be surrounded with round brackets

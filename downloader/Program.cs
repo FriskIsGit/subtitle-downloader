@@ -1,41 +1,40 @@
-﻿using System.Text;
-
+﻿
 namespace subtitle_downloader.downloader;
 
 class Program {
-    private const string VERSION = "1.0.1";
+    public const string VERSION = "1.0.2";
     public static void Main(string[] args) {
-        if (args.Length == 0) {
-            PrintHelp();
+        if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
+            Arguments.PrintHelp();
             return;
         }
 
-        if (args.Length == 1) {
-            Console.WriteLine($"Specify production details in the following format: {ParsedSubtitle.FORMAT}");
+        var arguments = Arguments.Parse(args);
+        Console.WriteLine(arguments);
+        if (!arguments.Validate()) {
+            Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
 
-        string remaining = concatenateRemainingArgs(args, 1);
-        var subtitle = ParsedSubtitle.Parse(remaining);
-
+        return;
         var api = new SubtitleAPI();
-        List<Production> productions = api.getSuggestedMovies(subtitle.title);
+        List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No productions found, implement fallback?");
             return;
         }
         
-        Production prod = selectProduction(productions, subtitle);
+        Production prod = selectProduction(productions, arguments);
         Console.WriteLine("Selected: " + prod);
-        string pageUrl = createSubtitleUrl(args[0], prod.id);
+        string pageUrl = createSubtitleUrl(arguments.language, prod.id);
 
-        if (subtitle.isMovie) {
+        if (arguments.isMovie) {
             downloadSubtitle(api, pageUrl);
         } else {
             string seasonsHtml = api.fetchHtml(pageUrl);
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
             prettyPrint(seasons);
-            Episode episode = getRequestedEpisode(seasons, subtitle.season, subtitle.episode);
+            Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
             Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
             downloadSubtitle(api, episode.getPageUrl(), episode.name);
         }
@@ -159,21 +158,7 @@ class Program {
         return max == 0 ? rows[0] : bestSubtitle;
     }
 
-    private static string concatenateRemainingArgs(string[] args, int from) {
-        var concatenated = new StringBuilder();
-        for (int i = from; i < args.Length; i++) {
-            if (args[i].Length == 0) {
-                continue;
-            }
-            if (i != from) {
-                concatenated.Append(' ');
-            }
-            concatenated.Append(args[i]);
-        }
-        return concatenated.ToString();
-    }
-    
-    private static Production selectProduction(List<Production> productions, ParsedSubtitle desiredSubtitle) {
+    private static Production selectProduction(List<Production> productions, Arguments desiredSubtitle) {
         productions = filterByKind(productions, desiredSubtitle.isMovie);
         switch (productions.Count) {
             case 0:
@@ -255,21 +240,6 @@ class Program {
 
         return filtered;
     }
-
-    private static void PrintHelp() {
-        Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{VERSION}");
-        Console.WriteLine();
-        Console.WriteLine("Commands:");
-        Console.WriteLine("    <language> <movie name> (<year>)");
-        Console.WriteLine("    <language> <show name> (<year>) S<season> E<episode>");
-        Console.WriteLine("    <language> <show name> S<season> E<episode>");
-        Console.WriteLine();
-        Console.WriteLine("Usage example:");
-        Console.WriteLine("  subtitles french The Godfather (1972)");
-        Console.WriteLine("  subtitles french Office (2005) S9 E19");
-        Console.WriteLine("  subtitles french fast and the furious");
-    }
-
 
     // Extract .zip that contains the .srt files
     public static void UnzipFile(string zipPath) {
