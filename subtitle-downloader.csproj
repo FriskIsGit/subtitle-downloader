@@ -13,17 +13,5 @@
     <Compile Remove="scraper/tests/*" />
     <EmbeddedResource Remove="scraper/tests/*" />
     <None Remove="scraper/tests/*" />
-    <None Include="bin\Debug\net7.0\failed.html" />
-    <None Include="bin\Debug\net7.0\manifest.json" />
-    <None Include="bin\Debug\net7.0\modlist.html" />
-    <None Include="bin\Debug\net7.0\modlist100.html" />
-  </ItemGroup>
-  <ItemGroup>
-    <Content Include="bin\Debug\net7.0\manifest100.json" />
-    <Content Include="bin\Debug\net7.0\manifest277.json" />
-    <Content Include="bin\Debug\net7.0\manifest311.json" />
-    <Content Include="bin\Debug\net7.0\modlist277.html" />
-    <Content Include="bin\Debug\net7.0\modlist311.html" />
-    <Content Include="obj\Debug\net7.0\failed.html" />
   </ItemGroup>
 </Project>

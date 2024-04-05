@@ -1,11 +1,13 @@
 ﻿using System.Net;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader; 
 
 public class SubtitleAPI {
     private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
+    private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
 
     private readonly HttpClient client = new() {
         Timeout = Timeout.InfiniteTimeSpan,
@@ -34,6 +36,20 @@ public class SubtitleAPI {
             productions.Add(prod);
         }
         
+        return productions;
+    }
+    
+    // OpenSubtitles API is quirky
+    public List<Production> searchSubtitle(Arguments arguments) {
+        var productions = new List<Production>();
+        string languageId = toSubLanguageID(arguments.language);
+        StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{arguments.title}/SubLanguageId-{languageId}");
+        url.Append(arguments.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");
+        if (arguments.year != 0) {
+            url.Append($"/MovieYear-{arguments.year}");
+        }
+        var response = fetchHtml(url.ToString());
+        var targetURL = SubtitleScraper.scrapeSearchResults(response, arguments.isMovie);
         return productions;
     }
 

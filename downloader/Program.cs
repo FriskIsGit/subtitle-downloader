@@ -1,4 +1,6 @@
 ﻿
+using System.Diagnostics;
+
 namespace subtitle_downloader.downloader;
 
 class Program {
@@ -15,12 +17,12 @@ class Program {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
-
-        return;
+        
         var api = new SubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No productions found, implement fallback?");
+            api.searchSubtitle(arguments);
             return;
         }
         
@@ -77,23 +79,31 @@ class Program {
     }
     
     private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
-        uint seasonIndex = seasonNum - 1;
-        if (seasonIndex >= seasons.Count) {
-            Console.WriteLine($"Season {seasonNum} was requested but only {seasons.Count} seasons were found");
+        int seasonIndex = -1;
+        for (var i = 0; i < seasons.Count; i++) {
+            if (seasons[i].number == seasonNum) {
+                seasonIndex = i;
+                break;
+            }
+        }
+        
+        if (seasonIndex == -1) {
+            Console.WriteLine($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
             Environment.Exit(0);
         }
 
-        Season season = seasons[(int)seasonIndex];
-        uint episodeIndex = episodeNum - 1;
-        if (episodeIndex >= season.episodes.Count) {
-            Console.WriteLine($"Episode {episodeNum} was requested but only {season.episodes.Count} episodes were found");
-            Environment.Exit(0);
+        Season season = seasons[seasonIndex];
+        foreach (var episode in season.episodes) {
+            if (episode.number == episodeNum) {
+                return episode;
+            }
         }
-
-        return season.episodes[(int)episodeIndex];
+        Console.WriteLine($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
+        Environment.Exit(0);
+        throw new UnreachableException();
     }
 
-    const int EPISODE_LIMIT = 20;
+    private const int EPISODE_LIMIT = 20;
     private static void prettyPrint(List<Season> seasons) {
         bool truncated = false;
         foreach (var season in seasons) {

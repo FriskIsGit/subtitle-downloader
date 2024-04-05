@@ -72,6 +72,25 @@ public class SubtitleScraper {
         return subtitles;
     }
 
+    // returns the URL of the production
+    public static string scrapeSearchResults(string html, bool isMovie) {
+        var doc = new HtmlDoc(html);
+        Tag? tableBody = doc.Find("tbody");
+        if (tableBody is null) {
+            return "";
+        }
+        
+        const string TV = "TV Series";
+        List<Tag> tags = doc.ExtractTags(tableBody, "tr");
+        foreach (var tag in tags) {
+            string? id = tag.GetAttribute("id");
+            if (id == null || !id.StartsWith("name")) {
+                continue;
+            }
+            
+        }
+    }
+
     private static List<SubtitleRow> ScrapeDownloadButton(HtmlDoc doc) {
         Tag? downloadAnchor = doc.Find("a", 
             ("download", "download", Compare.EXACT),
@@ -143,11 +162,11 @@ public class SubtitleScraper {
             seasons.Add(season);
         }
 
-        int seasonNumber = 0;
+        int seasonIndex = -1;
         // Scrape episodes
         foreach (var tr in tableRows) {
             if (tr.Attributes.Count == 0) {
-                seasonNumber++;
+                seasonIndex++;
                 continue;
             }
 
@@ -182,8 +201,7 @@ public class SubtitleScraper {
                 continue;
             }
             episode.name = doc.ExtractText(episodeName);
-
-            int seasonIndex = seasonNumber - 1;
+            
             Season season = seasons[seasonIndex];
             season.episodes.Add(episode);
         }
