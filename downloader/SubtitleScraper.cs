@@ -73,24 +73,85 @@ public class SubtitleScraper {
     }
 
     // returns the URL of the production
-    public static string scrapeSearchResults(string html, bool isMovie) {
+    public static List<Production> scrapeSearchResults(string html, bool isMovie) {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
-            return "";
+            return new List<Production>();
         }
-        
-        const string TV = "TV Series";
+
+        var productions = new List<Production>();
         List<Tag> tags = doc.ExtractTags(tableBody, "tr");
         foreach (var tag in tags) {
             string? id = tag.GetAttribute("id");
             if (id == null || !id.StartsWith("name")) {
                 continue;
             }
+            var data = doc.FindFrom("td", tag.StartOffset, ("id", "main", Compare.VALUE_STARTS_WITH));
+            if (data is null) {
+                continue;
+            }
+            var strong = doc.FindFrom("strong", data.StartOffset + 16);
+            if (strong is null) {
+                continue;
+            }
             
+            string productionName = doc.ExtractText(strong);
+            
+            var anchor = doc.FindFrom("a", strong.StartOffset + 6, ("class", "bnone", Compare.EXACT));
+            if (anchor is null) {
+                continue;
+            }
+
+            string? href = anchor.GetAttribute("href");
+            if (href is null) {
+                continue;
+            }
+            
+            // Since title was extracted from the strong tag (specifically the anchor) the strong's end offset is known
+            // This logic is meant to results for episodes which follow this format: [S1E1] 
+            int episodeSt = shortIndexOf(html, '[', strong.EndOffset, strong.EndOffset + 10);
+            if (episodeSt != -1) {
+                int episodeEnd = shortIndexOf(html, ']', episodeSt, episodeSt + 10);
+                if (episodeEnd != -1) {
+                    Console.WriteLine($"Skipping episode {html[(episodeSt+1)..episodeEnd]}");
+                }
+                continue;
+            }
+
+            var (title, year) = Production.ParseTitleYear(productionName);
+            
+            var production = new Production {
+                name = title,
+                year = year,
+                id = extractUrlId(href),
+                kind = isMovie ? "movie" : "tv",
+            };
+            productions.Add(production);
         }
+
+        return productions;
     }
 
+    private static uint extractUrlId(string url) {
+        var idMovie = url.IndexOf("idmovie-", StringComparison.InvariantCulture);
+        if (idMovie == -1) {
+            return 0;
+        }
+        int stIndex = idMovie + 8;
+        string numerical = url[stIndex..];
+        return uint.TryParse(numerical, out var id) ? id : 0;
+    }
+    
+    private static int shortIndexOf(string text, char chr, int from, int to) {
+        for (int i = from; i < text.Length && i < to; i++) {
+            if (text[i] == chr) {
+                return i;
+            }
+        }
+        return -1;
+    }
+    
     private static List<SubtitleRow> ScrapeDownloadButton(HtmlDoc doc) {
         Tag? downloadAnchor = doc.Find("a", 
             ("download", "download", Compare.EXACT),

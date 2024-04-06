@@ -41,7 +41,6 @@ public class SubtitleAPI {
     
     // OpenSubtitles API is quirky
     public List<Production> searchSubtitle(Arguments arguments) {
-        var productions = new List<Production>();
         string languageId = toSubLanguageID(arguments.language);
         StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{arguments.title}/SubLanguageId-{languageId}");
         url.Append(arguments.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");
@@ -49,8 +48,7 @@ public class SubtitleAPI {
             url.Append($"/MovieYear-{arguments.year}");
         }
         var response = fetchHtml(url.ToString());
-        var targetURL = SubtitleScraper.scrapeSearchResults(response, arguments.isMovie);
-        return productions;
+        return SubtitleScraper.scrapeSearchResults(response, arguments.isMovie);
     }
 
     public static string toSubLanguageID(string language) {

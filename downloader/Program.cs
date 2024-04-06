@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.0.2";
+    public const string VERSION = "1.1.0";
     public static void Main(string[] args) {
         if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
             Arguments.PrintHelp();
@@ -22,8 +22,11 @@ class Program {
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No productions found, implement fallback?");
-            api.searchSubtitle(arguments);
-            return;
+            productions = api.searchSubtitle(arguments);
+            if (productions.Count == 0) {
+                Console.WriteLine("Fallback failed!");
+                return;
+            }
         }
         
         Production prod = selectProduction(productions, arguments);

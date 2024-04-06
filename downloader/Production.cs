@@ -26,4 +26,23 @@ public struct Production {
     public override string ToString() {
         return $"{name} ({year}) id:{id} rating:{rating} kind:{kind}";
     }
+
+    public static (string title, uint year) ParseTitleYear(string productionName) {
+        int newLine = productionName.IndexOf('\n', StringComparison.InvariantCulture);
+        if (newLine == -1) {
+            return ("", 0);
+        }
+        string title = productionName[..newLine];
+
+        int bracketOpen = productionName.LastIndexOf('(');
+        if (bracketOpen != -1) {
+            int close = productionName.LastIndexOf(')');
+            string numericalYear = productionName[(bracketOpen+1)..close];
+            if (uint.TryParse(numericalYear, out var year)) {
+                return (title, year);
+            }
+        }
+
+        return (title, 0);
+    }
 }
