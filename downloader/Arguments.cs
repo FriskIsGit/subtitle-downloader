@@ -20,6 +20,9 @@ public struct Arguments {
     
     public uint season = 0;
     public uint episode = 0;
+    
+    public bool providedSeason = false;
+    public bool providedEpisode = false;
 
     public Arguments() {
     }
@@ -27,6 +30,7 @@ public struct Arguments {
     public static Arguments Parse(string[] args) {
         var subtitle = new Arguments();
         bool isTitleSet = false;
+        
         for (int i = 0; i < args.Length; i++) {
             string currentArg = args[i];
             int seasonIndex = StartsWith(currentArg, SEASON_IDENTIFIERS);
@@ -41,6 +45,7 @@ public struct Arguments {
                         string numerical = currentArg[key.Length..];
                         if (uint.TryParse(numerical, out value)) {
                             subtitle.season = value;
+                            subtitle.providedSeason = true;
                         }
                         else {
                             FailExit("Failed to parse (adjacent) season number!");
@@ -50,6 +55,7 @@ public struct Arguments {
                         bool hasNext = i + 1 < args.Length;
                         if (hasNext && uint.TryParse(args[i + 1], out value)) {
                             subtitle.season = value;
+                            subtitle.providedSeason = true;
                             i++;
                         }
                         else {
@@ -72,6 +78,7 @@ public struct Arguments {
                         string numerical = currentArg[key.Length..];
                         if (uint.TryParse(numerical, out value)) {
                             subtitle.episode = value;
+                            subtitle.providedEpisode = true;
                         }
                         else {
                             FailExit("Failed to parse (adjacent) episode number!");
@@ -81,6 +88,7 @@ public struct Arguments {
                         bool hasNext = i + 1 < args.Length;
                         if (hasNext && uint.TryParse(args[i + 1], out value)) {
                             subtitle.episode = value;
+                            subtitle.providedEpisode = true;
                             i++;
                         }
                         else {
@@ -162,7 +170,7 @@ public struct Arguments {
         }
 
         if (!isMovie) {
-            if (episode == 0 || season == 0) {
+            if (!providedSeason || !providedEpisode) {
                 Console.WriteLine("For TV series season and episode arguments are required");
                 return false;
             }
@@ -260,10 +268,11 @@ public struct Arguments {
     }
 
     public static void PrintHelp() {
+        string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
         Console.WriteLine();
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
-        Console.WriteLine("Usage: subtitles [movie/show title] [arguments...]");
+        Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
@@ -273,9 +282,9 @@ public struct Arguments {
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
-        Console.WriteLine("  subtitles \"The Godfather\" -y 1972");
-        Console.WriteLine("  subtitles \"Office\" -y 2005 -S9 -E19");
-        Console.WriteLine("  subtitles \"fast and the furious\"");
+        Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
+        Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
+        Console.WriteLine($"  {programName} \"fast and the furious\"");
     }
     
     public override string ToString() {

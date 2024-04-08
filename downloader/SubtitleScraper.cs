@@ -179,7 +179,8 @@ public class SubtitleScraper {
         List<Tag> tableRows = doc.ExtractTags(tableBody, "tr");
 
         List<Season> seasons = new();
-        
+
+        bool hasUnclassified = false;
         // 1. Scrape season packages
         foreach (var tr in tableRows) {
             Season season = new Season();
@@ -200,6 +201,9 @@ public class SubtitleScraper {
 
             try {
                 season.number = int.Parse(seasonStr[(dash + 1)..]);
+                if (season.number == -1) {
+                    hasUnclassified = true;
+                }
             }
             catch { }
 
@@ -223,6 +227,7 @@ public class SubtitleScraper {
             seasons.Add(season);
         }
 
+        Console.WriteLine($"HAS UNCLASSIFIED: {hasUnclassified}");
         int seasonIndex = -1;
         // Scrape episodes
         foreach (var tr in tableRows) {
@@ -251,7 +256,15 @@ public class SubtitleScraper {
             Tag? episodeInfo = doc.FindFrom("a", spanEpisodeNumber.StartOffset + 10, 
                 ("itemprop", "url", Compare.EXACT),
                 ("href", "", Compare.KEY_ONLY));
-            if (episodeInfo is null) {
+            if (episodeInfo is null || spanEpisodeNumber.EndOffset + 10 < episodeInfo.StartOffset) {
+                // Extract td after tr
+                Tag? td = doc.FindFrom("td", tr.StartOffset + 10);
+                var dirtyName = doc.ExtractText(td ?? tr);
+                int dot = dirtyName.IndexOf('.');
+                if (dot != 1) {
+                    episode.name = dirtyName[(dot + 2)..];
+                    seasons[seasonIndex].episodes.Add(episode);
+                }
                 continue;
             }
             episode.url = episodeInfo.GetAttribute("href") ?? "";

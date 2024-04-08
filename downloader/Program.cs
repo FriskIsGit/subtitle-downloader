@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.1.0";
+    public const string VERSION = "1.1.1";
     public static void Main(string[] args) {
         if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
             Arguments.PrintHelp();
@@ -41,6 +41,10 @@ class Program {
             prettyPrint(seasons);
             Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
             Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
+            if (episode.url.Length == 0) {
+                Console.WriteLine("This episode has no subtitles for given language, try again with --lang all");
+                return;
+            }
             downloadSubtitle(api, episode.getPageUrl(), episode.name);
         }
         
