@@ -21,8 +21,8 @@ public struct Arguments {
     public uint season = 0;
     public uint episode = 0;
     
-    public bool providedSeason = false;
-    public bool providedEpisode = false;
+    private bool providedSeason = false;
+    private bool providedEpisode = false;
 
     public Arguments() {
     }

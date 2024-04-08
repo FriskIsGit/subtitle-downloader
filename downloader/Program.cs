@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.1.1";
+    public const string VERSION = "1.1.2";
     public static void Main(string[] args) {
         if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
             Arguments.PrintHelp();
@@ -21,7 +21,7 @@ class Program {
         var api = new SubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
-            Console.WriteLine("No productions found, implement fallback?");
+            Console.WriteLine("No suggested productions found, falling back to search");
             productions = api.searchSubtitle(arguments);
             if (productions.Count == 0) {
                 Console.WriteLine("Fallback failed!");
@@ -148,6 +148,41 @@ class Program {
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows) {
+        if (USER_SELECT_SUBTITLE) {
+            return userSelectsSubtitle(rows);
+        }
+
+        return selectBestSubtitle(rows);
+    }
+
+    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {
+        Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
+        for (int i = 0; i < rows.Count; i++) {
+            var prod = rows[i];
+            Console.WriteLine($"#{i+1} " + prod);
+        }
+        while (true) {
+            string? input = Console.ReadLine();
+            if (input is null || input.Length == 0) {
+                Console.WriteLine("Specify a number");
+                continue;
+            }
+
+            int num;
+            if (!int.TryParse(input, out num)) {
+                Console.WriteLine("Specify a number");
+                continue;
+            }
+
+            if (num < 1 || num > rows.Count) {
+                Console.WriteLine("Out of bounds number");
+                continue;
+            }
+            return rows[num - 1];
+        }
+    }
+
+    private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows) {
         SubtitleRow bestSubtitle = new SubtitleRow();
         double max = 0;
         foreach (var subtitle in rows) {
@@ -175,8 +210,12 @@ class Program {
         return max == 0 ? rows[0] : bestSubtitle;
     }
 
+    private const bool USER_SELECT_SUBTITLE = true;
+    private const bool USER_SELECT_PRODUCTION = false;
+    
+
     private static Production selectProduction(List<Production> productions, Arguments desiredSubtitle) {
-        productions = filterByKind(productions, desiredSubtitle.isMovie);
+        keepKind(productions, desiredSubtitle.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
                 throw new Exception("No productions remained after filtering");
@@ -184,6 +223,40 @@ class Program {
                 return productions[0];
         }
 
+        if (USER_SELECT_PRODUCTION) {
+            return userSelectsProduction(productions);
+        }
+        return selectBestProduction(productions, desiredSubtitle);
+    }
+
+    private static Production userSelectsProduction(List<Production> productions) {
+        Console.WriteLine($"Select production ({1}-{productions.Count}):");
+        for (int i = 0; i < productions.Count; i++) {
+            var prod = productions[i];
+            Console.WriteLine($"#{i+1} " + prod);
+        }
+        while (true) {
+            string? input = Console.ReadLine();
+            if (input is null || input.Length == 0) {
+                Console.WriteLine("Specify a number");
+                continue;
+            }
+
+            int num;
+            if (!int.TryParse(input, out num)) {
+                Console.WriteLine("Specify a number");
+                continue;
+            }
+
+            if (num < 1 || num > productions.Count) {
+                Console.WriteLine("Out of bounds number");
+                continue;
+            }
+            return productions[num - 1];
+        }
+    } 
+    
+    private static Production selectBestProduction(List<Production> productions, Arguments desiredSubtitle) {
         if (desiredSubtitle.year != 0) {
             bool hasMatchingYear = false;
             foreach (var production in productions) {
@@ -240,22 +313,19 @@ class Program {
                 bestProduction = production;
             }
         }
-
         return bestProduction;
     }
 
-    private static List<Production> filterByKind(List<Production> productions, bool keepMovies) {
-        var filtered = new List<Production>();
-        foreach (var prod in productions) {
-            if (prod.kind == "movie" && keepMovies) {
-                filtered.Add(prod);
+    private static void keepKind(List<Production> productions, string kindToKeep) {
+        int i = 0;
+        while (i < productions.Count) {
+            var prod = productions[i];
+            if (prod.kind != kindToKeep) {
+                productions.RemoveAt(i);
+                continue;
             }
-            else if (prod.kind == "tv" && !keepMovies) {
-                filtered.Add(prod);
-            }
+            i++;
         }
-
-        return filtered;
     }
 
     // Extract .zip that contains the .srt files

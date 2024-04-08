@@ -109,13 +109,13 @@ public class SubtitleScraper {
             }
             
             // Since title was extracted from the strong tag (specifically the anchor) the strong's end offset is known
-            // This logic is meant to results for episodes which follow this format: [S1E1] 
+            // This logic is meant to skip episode entries which follow this format: [S1E1] 
             int episodeSt = shortIndexOf(html, '[', strong.EndOffset, strong.EndOffset + 10);
             if (episodeSt != -1) {
-                int episodeEnd = shortIndexOf(html, ']', episodeSt, episodeSt + 10);
+                /*int episodeEnd = shortIndexOf(html, ']', episodeSt, episodeSt + 10);
                 if (episodeEnd != -1) {
                     Console.WriteLine($"Skipping episode {html[(episodeSt+1)..episodeEnd]}");
-                }
+                }*/
                 continue;
             }
 
@@ -227,7 +227,7 @@ public class SubtitleScraper {
             seasons.Add(season);
         }
 
-        Console.WriteLine($"HAS UNCLASSIFIED: {hasUnclassified}");
+        Console.WriteLine($"Has unclassified episodes: {hasUnclassified}");
         int seasonIndex = -1;
         // Scrape episodes
         foreach (var tr in tableRows) {
