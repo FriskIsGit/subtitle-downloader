@@ -12,7 +12,6 @@ class Program {
         }
 
         var arguments = Arguments.Parse(args);
-        Console.WriteLine(arguments);
         if (!arguments.Validate()) {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
@@ -38,7 +37,9 @@ class Program {
         } else {
             string seasonsHtml = api.fetchHtml(pageUrl);
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
-            prettyPrint(seasons);
+            if (arguments.listSeries) {
+                prettyPrint(seasons);
+            }
             Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
             Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
             if (episode.url.Length == 0) {
@@ -110,24 +111,13 @@ class Program {
         throw new UnreachableException();
     }
 
-    private const int EPISODE_LIMIT = 20;
     private static void prettyPrint(List<Season> seasons) {
-        bool truncated = false;
         foreach (var season in seasons) {
             Console.WriteLine($"Season [{season.number}] Episodes: {season.episodes.Count}");
-            for (int e = 0; e < season.episodes.Count && e < EPISODE_LIMIT; e++) {
-                Episode episode = season.episodes[e];
+            foreach (var episode in season.episodes) {
                 Console.WriteLine($"  {episode.number}. {episode.name}");
             }
-
             Console.WriteLine("----------------------------------------------");
-            if (season.episodes.Count > EPISODE_LIMIT) {
-                truncated = true;
-            }
-        }
-
-        if (truncated) {
-            Console.WriteLine($"Episodes were truncated to {EPISODE_LIMIT}");
         }
     }
     
@@ -156,11 +146,11 @@ class Program {
     }
 
     private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {
-        Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
         for (int i = 0; i < rows.Count; i++) {
             var prod = rows[i];
             Console.WriteLine($"#{i+1} " + prod);
         }
+        Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
         while (true) {
             string? input = Console.ReadLine();
             if (input is null || input.Length == 0) {

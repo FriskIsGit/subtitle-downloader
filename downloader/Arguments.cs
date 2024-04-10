@@ -6,7 +6,8 @@ public struct Arguments {
     private static readonly string[] SEASON_IDENTIFIERS   = {"-s", "-S", "--season"};
     private static readonly string[] EPISODE_IDENTIFIERS  = {"-e", "-E", "--episode"};
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
-    private static readonly string[] LANGUAGE_IDENTIFIERS = {"-l", "--lang"};
+    private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
+    private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
 
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
@@ -21,6 +22,8 @@ public struct Arguments {
     public uint season = 0;
     public uint episode = 0;
     
+    public bool listSeries = false;
+
     private bool providedSeason = false;
     private bool providedEpisode = false;
 
@@ -142,6 +145,12 @@ public struct Arguments {
                 continue;
             }
 
+            int listIndex = EqualsAny(currentArg, LIST_IDENTIFIERS);
+            if (listIndex != -1) {
+                subtitle.listSeries = true;
+                continue;
+            }
+
             if (currentArg.StartsWith('-')) {
                 Console.WriteLine($"Unrecognized argument identifier: {currentArg}");
                 continue;
@@ -195,7 +204,14 @@ public struct Arguments {
                 return i;
             }
         }
-
+        return -1;
+    }
+    private static int EqualsAny(string arg, params string[] parameters) {
+        for (var i = 0; i < parameters.Length; i++) {
+            if (arg == parameters[i]) {
+                return i;
+            }
+        }
         return -1;
     }
 
@@ -277,8 +293,9 @@ public struct Arguments {
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
         Console.WriteLine("    -e, -E, --episode             Episode number of a tv series (episode > 0)");
-        Console.WriteLine("    -l, --lang                    Subtitle language written in English (at least 3 characters)");
+        Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
+        Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
