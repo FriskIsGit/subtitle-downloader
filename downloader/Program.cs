@@ -1,10 +1,11 @@
 ﻿
 using System.Diagnostics;
+using System.Text;
 
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.1.2";
+    public const string VERSION = "1.1.3";
     public static void Main(string[] args) {
         if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
             Arguments.PrintHelp();
@@ -12,6 +13,7 @@ class Program {
         }
 
         var arguments = Arguments.Parse(args);
+        Console.WriteLine(arguments);
         if (!arguments.Validate()) {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
@@ -66,6 +68,8 @@ class Program {
         if (fileName is null) {
             fileName = bestSubtitle.broadcastTitle;
         }
+
+        fileName = sanitizeFileName(fileName);
         var download = api.downloadSubtitle(bestSubtitle, fileName);
         try {
             download.Wait();
@@ -85,7 +89,29 @@ class Program {
         File.Delete(downloadedZip);
         cleanupNFOs();
     }
-    
+
+    private static string sanitizeFileName(string fileName) {
+        StringBuilder str = new(fileName.Length);
+        foreach (char chr in fileName) {
+            switch (chr) {
+                case '<':
+                case '>':
+                case ':':
+                case '/':
+                case '\\':
+                case '"':
+                case '|':
+                case '?':
+                case '*':
+                    break;
+                default:
+                    str.Append(chr);
+                    break;
+            }
+        }
+        return str.ToString();
+    }
+
     private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
         int seasonIndex = -1;
         for (var i = 0; i < seasons.Count; i++) {
@@ -138,11 +164,16 @@ class Program {
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows) {
+        sortSubtitleByDownloads(rows);
         if (USER_SELECT_SUBTITLE) {
             return userSelectsSubtitle(rows);
         }
 
         return selectBestSubtitle(rows);
+    }
+
+    private static void sortSubtitleByDownloads(List<SubtitleRow> rows) {
+        rows.Sort((e1, e2) => e2.downloads.CompareTo(e1.downloads));
     }
 
     private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {

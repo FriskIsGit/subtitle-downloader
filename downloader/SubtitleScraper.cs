@@ -1,4 +1,5 @@
-﻿using WebScrapper.scrapper;
+﻿using System.Text;
+using WebScrapper.scrapper;
 
 namespace subtitle_downloader.downloader; 
 
@@ -296,10 +297,27 @@ public class SubtitleRow {
     public int downloads;
     
     public void fixTitle() {
-        broadcastTitle = broadcastTitle.Replace('\n', ' ');
+        StringBuilder fixedTitle = new(broadcastTitle);
+        fixedTitle.Replace('\n', ' ');
+        int quoteSt = indexOf(fixedTitle, '"');
+        if (quoteSt != -1 && quoteSt + 1 < fixedTitle.Length && fixedTitle[quoteSt + 1] == ' ') {
+            fixedTitle.Remove(quoteSt + 1, 1);
+        }
+        
+        broadcastTitle = fixedTitle.ToString();
         broadcastTitle = broadcastTitle.Trim();
     }
 
+    private static int indexOf(StringBuilder str, char chr) {
+        for (int i = 0; i < str.Length; i++) {
+            if (str[i] == chr) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+    
     public override string ToString() {
         return $"{broadcastTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
