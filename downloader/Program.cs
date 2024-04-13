@@ -5,11 +5,16 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.1.3";
+    public const string VERSION = "1.1.4";
     public static void Main(string[] args) {
-        if (args.Length == 0 || args is ["--help"] || args is ["-help"]) {
-            Arguments.PrintHelp();
-            return;
+        switch (args.Length) {
+            case 0:
+            case 1 when args[0].StartsWith("-h"):
+                Arguments.PrintHelp();
+                return;
+            case 1 when args[0].StartsWith("-v"):
+                Console.WriteLine(VERSION);
+                return;
         }
 
         var arguments = Arguments.Parse(args);
@@ -43,7 +48,7 @@ class Program {
                 prettyPrint(seasons);
             }
             Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
-            Console.WriteLine($"Episode {episode.number} \"{episode.name}\" {episode.url}");
+            Console.WriteLine($"\"{episode.name}\" S{arguments.season} E{episode.number}");
             if (episode.url.Length == 0) {
                 Console.WriteLine("This episode has no subtitles for given language, try again with --lang all");
                 return;

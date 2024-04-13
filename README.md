@@ -5,8 +5,9 @@
 ### Arguments
 - `-s, -S, --season` - season number (required for tv series)
 - `-e, -E, --episode` - episode number (required for tv series)
-- `-l, --lang` - specifies subtitle language (kinda required)
+- `--lang` - specifies subtitle language (kinda required)
 - `-y, --year` - the year a movie or a tv series was released (optional)
+- `--list` - pretty prints episodes if specified for TV series 
 
 ### Examples
 
