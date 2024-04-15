@@ -5,7 +5,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.1.4";
+    public const string VERSION = "1.2.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -355,7 +355,7 @@ class Program {
     }
 
     // Extract .zip that contains the .srt files
-    public static void UnzipFile(string zipPath) {
+    private static void UnzipFile(string zipPath) {
         try {
             System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, ".");
         } catch (IOException io) {

@@ -8,6 +8,7 @@ public struct Arguments {
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
     private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
     private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
+    private static readonly string[] PATH_IDENTIFIERS = {"--path"};
 
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
@@ -151,6 +152,24 @@ public struct Arguments {
                 continue;
             }
 
+            int pathIndex = StartsWith(currentArg, PATH_IDENTIFIERS);
+            if (pathIndex != -1) {
+                bool hasNext = i + 1 < args.Length;
+                if (hasNext) {
+                    string path = args[i + 1];
+                    i++;
+                    if (!File.Exists(path)) {
+                        Console.WriteLine($"{path} does not exist.");
+                        continue;
+                    }
+                    parseFilename(Path.GetFileNameWithoutExtension(path), ref subtitle);
+                }
+                else {
+                    Console.WriteLine("A path to file was expected. Help: --path <path>");
+                }
+                continue;
+            }
+
             if (currentArg.StartsWith('-')) {
                 Console.WriteLine($"Unrecognized argument identifier: {currentArg}");
                 continue;
@@ -162,6 +181,69 @@ public struct Arguments {
         }
 
         return subtitle;
+    }
+
+    private static void parseFilename(string filename, ref Arguments subtitle) {
+        StringBuilder title = new StringBuilder();
+        if (filename.Contains('.')) {
+            // assume dot format
+            string[] parts = filename.Split('.');
+            bool appendingTitle = true;
+            foreach (var part in parts) {
+                if (part.EndsWith("0p")) {
+                    appendingTitle = false;
+                    continue;
+                }
+                if (part.StartsWith("x264") || part.StartsWith("x265")) {
+                    appendingTitle = false;
+                    continue;
+                }
+                if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) && char.IsDigit(part[^1])) {
+                    int episodeIndex = part.IndexOf('e', 2);
+                    if (episodeIndex == -1) {
+                        episodeIndex = part.IndexOf('E', 2);
+                    }
+
+                    string seasonStr = part[1..episodeIndex];
+                    if (!uint.TryParse(seasonStr, out var season)) {
+                        Console.WriteLine("Failed to parse season number");
+                        continue;
+                    }
+                    subtitle.season = season;
+                    subtitle.providedSeason = true;
+                    string episodeStr = part[(episodeIndex + 1)..];
+                    if (!uint.TryParse(episodeStr, out var episode)) {
+                        Console.WriteLine("Failed to parse episode number");
+                        continue;
+                    }
+                    subtitle.episode = episode;
+                    subtitle.providedEpisode = true;
+
+                    subtitle.isMovie = false;
+                    appendingTitle = false;
+                }
+                else if (part.Length == 4 && isNumerical(part)) {
+                    if (!uint.TryParse(part, out var year)) {
+                        Console.WriteLine("Failed to parse year value");
+                        continue;
+                    }
+                    subtitle.year = year;
+                    appendingTitle = false;
+                }
+                else {
+                    if (!appendingTitle) {
+                        continue;
+                    }
+                    if (title.Length > 0) {
+                        title.Append(' ');
+                    }
+                    title.Append(part);
+                }
+            }
+
+            subtitle.title = title.ToString();
+            return;
+        }
     }
 
     public bool Validate() {
@@ -289,6 +371,7 @@ public struct Arguments {
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
+        Console.WriteLine($"       {programName} --path [file path] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
@@ -296,7 +379,10 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
+        Console.WriteLine("    --path                        Extracts production details from filename in dotted format");
+        Console.WriteLine();
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
+        Console.WriteLine("File name provided with --path should follow this format: Series.Name.Year.SxEy");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
