@@ -7,7 +7,8 @@
 - `-e, -E, --episode` - episode number (required for tv series)
 - `--lang` - specifies subtitle language (kinda required)
 - `-y, --year` - the year a movie or a tv series was released (optional)
-- `--list` - pretty prints episodes if specified for TV series 
+- `--list` - pretty prints episodes if specified for TV series
+- `--path` - extracts production information from file name
 
 ### Examples
 

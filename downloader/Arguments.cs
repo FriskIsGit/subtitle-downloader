@@ -158,10 +158,6 @@ public struct Arguments {
                 if (hasNext) {
                     string path = args[i + 1];
                     i++;
-                    if (!File.Exists(path)) {
-                        Console.WriteLine($"{path} does not exist.");
-                        continue;
-                    }
                     parseFilename(Path.GetFileNameWithoutExtension(path), ref subtitle);
                 }
                 else {
