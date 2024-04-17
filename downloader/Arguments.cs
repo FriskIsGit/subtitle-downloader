@@ -236,10 +236,13 @@ public struct Arguments {
                     title.Append(part);
                 }
             }
-
             subtitle.title = title.ToString();
             return;
         }
+
+        var pair = ParseTitleYear(filename);
+        subtitle.title = pair.title;
+        subtitle.year = pair.year;
     }
 
     public bool Validate() {
@@ -296,6 +299,21 @@ public struct Arguments {
     private static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(0);
+    }
+    
+    public static (string title, uint year) ParseTitleYear(string name) {
+        int bracketOpen = name.LastIndexOf('(');
+        if (bracketOpen == -1) {
+            return (name, 0);
+        }
+
+        string title = name[..(bracketOpen - 1)];
+        int close = name.LastIndexOf(')');
+        string numericalYear = name[(bracketOpen+1)..close];
+        if (uint.TryParse(numericalYear, out var year)) {
+            return (title, year);
+        }
+        return (title, 0);
     }
     
     // Expected format: Movie Name (year) S1 E5
