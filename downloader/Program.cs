@@ -186,6 +186,12 @@ class Program {
             var prod = rows[i];
             Console.WriteLine($"#{i+1} " + prod.ToStringNoTitle());
         }
+
+        
+        if (rows.Count > 0) {
+            string title = rows[0].broadcastTitle;
+            Console.WriteLine($"{title}");
+        }
         Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
         while (true) {
             string? input = Console.ReadLine();
