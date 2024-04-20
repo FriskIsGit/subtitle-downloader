@@ -321,6 +321,9 @@ public class SubtitleRow {
     public override string ToString() {
         return $"{broadcastTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
+    public string ToStringNoTitle() {
+        return $"{getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
+    }
 
     public string getFullURL() {
         return $"{DOWNLOAD_URL}{getLastPart()}";

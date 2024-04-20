@@ -5,7 +5,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.2.1";
+    public const string VERSION = "1.2.2";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -154,7 +154,7 @@ class Program {
     
     private static string createSubtitleUrl(string language, uint prodId) {
         string languageId = SubtitleAPI.toSubLanguageID(language);
-        Console.WriteLine("Language id: " + languageId);
+        // Console.WriteLine("Language id: " + languageId);
         return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
@@ -184,7 +184,7 @@ class Program {
     private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {
         for (int i = 0; i < rows.Count; i++) {
             var prod = rows[i];
-            Console.WriteLine($"#{i+1} " + prod);
+            Console.WriteLine($"#{i+1} " + prod.ToStringNoTitle());
         }
         Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
         while (true) {

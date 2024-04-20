@@ -393,10 +393,12 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --path                        Extracts production details from filename in dotted format");
+        Console.WriteLine("    --path                        Extracts production details from filename in dotted/spaced format");
         Console.WriteLine();
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
-        Console.WriteLine("File name provided with --path should follow this format: Series.Name.Year.SxEy");
+        Console.WriteLine("File name provided with --path should follow two formats: ");
+        Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
+        Console.WriteLine(" - spaced: Production Name (Year)");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
