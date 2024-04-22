@@ -181,68 +181,97 @@ public struct Arguments {
 
     private static void parseFilename(string filename, ref Arguments subtitle) {
         StringBuilder title = new StringBuilder();
+        string[] parts;
         if (filename.Contains('.')) {
             // assume dot format
-            string[] parts = filename.Split('.');
-            bool appendingTitle = true;
-            foreach (var part in parts) {
-                if (part.EndsWith("0p")) {
-                    appendingTitle = false;
-                    continue;
-                }
-                if (part.StartsWith("x264") || part.StartsWith("x265")) {
-                    appendingTitle = false;
-                    continue;
-                }
-                if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) && char.IsDigit(part[^1])) {
-                    int episodeIndex = part.IndexOf('e', 2);
-                    if (episodeIndex == -1) {
-                        episodeIndex = part.IndexOf('E', 2);
-                    }
-
-                    string seasonStr = part[1..episodeIndex];
-                    if (!uint.TryParse(seasonStr, out var season)) {
-                        Console.WriteLine("Failed to parse season number");
-                        continue;
-                    }
-                    subtitle.season = season;
-                    subtitle.providedSeason = true;
-                    string episodeStr = part[(episodeIndex + 1)..];
-                    if (!uint.TryParse(episodeStr, out var episode)) {
-                        Console.WriteLine("Failed to parse episode number");
-                        continue;
-                    }
-                    subtitle.episode = episode;
-                    subtitle.providedEpisode = true;
-
-                    subtitle.isMovie = false;
-                    appendingTitle = false;
-                }
-                else if (part.Length == 4 && isNumerical(part)) {
-                    if (!uint.TryParse(part, out var year)) {
-                        Console.WriteLine("Failed to parse year value");
-                        continue;
-                    }
-                    subtitle.year = year;
-                    appendingTitle = false;
-                }
-                else {
-                    if (!appendingTitle) {
-                        continue;
-                    }
-                    if (title.Length > 0) {
-                        title.Append(' ');
-                    }
-                    title.Append(part);
-                }
-            }
-            subtitle.title = title.ToString();
-            return;
+            parts = filename.Split('.');
+        }
+        else if (filename.Contains('-')) {
+            parts = filename.Split('-');
+        }
+        else {
+            parts = filename.Split(' ');
         }
 
-        var pair = ParseTitleYear(filename);
-        subtitle.title = pair.title;
-        subtitle.year = pair.year;
+        bool appendingTitle = true;
+        foreach (var part in parts) {
+            if (part.EndsWith("0p")) {
+                appendingTitle = false;
+                continue;
+            }
+
+            if (part.StartsWith("x264") || part.StartsWith("x265")) {
+                appendingTitle = false;
+                continue;
+            }
+
+            if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) &&
+                char.IsDigit(part[^1])) {
+                int episodeIndex = part.IndexOf('e', 2);
+                if (episodeIndex == -1) {
+                    episodeIndex = part.IndexOf('E', 2);
+                }
+
+                string seasonStr = part[1..episodeIndex];
+                if (!uint.TryParse(seasonStr, out var season)) {
+                    Console.WriteLine("Failed to parse season number");
+                    continue;
+                }
+
+                subtitle.season = season;
+                subtitle.providedSeason = true;
+                string episodeStr = part[(episodeIndex + 1)..];
+                if (!uint.TryParse(episodeStr, out var episode)) {
+                    Console.WriteLine("Failed to parse episode number");
+                    continue;
+                }
+
+                subtitle.episode = episode;
+                subtitle.providedEpisode = true;
+
+                subtitle.isMovie = false;
+                appendingTitle = false;
+            }
+            else if (part.Length == 4 && isNumerical(part)) {
+                if (!uint.TryParse(part, out var year)) {
+                    Console.WriteLine("Failed to parse year value");
+                    continue;
+                }
+                subtitle.year = year;
+                appendingTitle = false;
+            } 
+            else if (part.Length == 6 && part[0] == '(' && part[5] == '(' && isNumerical(part[1..5])) {
+                if (!uint.TryParse(part[1..5], out var year)) {
+                    Console.WriteLine("Failed to parse year value");
+                    continue;
+                }
+                subtitle.year = year;
+                appendingTitle = false;
+            }
+            else {
+                if (!appendingTitle) {
+                    continue;
+                }
+
+                if (title.Length > 0) {
+                    title.Append(' ');
+                }
+
+                title.Append(part);
+            }
+        }
+
+        subtitle.title = title.ToString();
+    }
+
+    private static int countChar(string str, char target) {
+        int count = 0;
+        foreach (var chr in str) {
+            if (chr == target) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public bool Validate() {
@@ -393,12 +422,13 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --path                        Extracts production details from filename in dotted/spaced format");
+        Console.WriteLine("    --path                        Extracts production details from filename");
         Console.WriteLine();
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
-        Console.WriteLine("File name provided with --path should follow two formats: ");
+        Console.WriteLine("File name provided with --path should follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
-        Console.WriteLine(" - spaced: Production Name (Year)");
+        Console.WriteLine(" - spaced: Production Name (Year) SxEy");
+        Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");

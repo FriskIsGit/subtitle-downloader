@@ -5,7 +5,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.2.2";
+    public const string VERSION = "1.2.3";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
