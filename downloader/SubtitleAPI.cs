@@ -97,7 +97,7 @@ public class SubtitleAPI {
         return response.Content.ReadAsStringAsync().Result;
     }
     
-    public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string fileName) {
+    public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string zipPath) {
         string resourceUrl = subtitle.getFullURL();
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
         if (response.RequestMessage?.RequestUri is null) {
@@ -116,7 +116,7 @@ public class SubtitleAPI {
                 return false;
         }
         await using var stream = await client.GetStreamAsync(resourceUrl);
-        await using var fs = new FileStream(fileName + ".zip", FileMode.Create);
+        await using var fs = new FileStream(zipPath, FileMode.Create);
         await stream.CopyToAsync(fs);
         return true;
     }

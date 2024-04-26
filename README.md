@@ -8,7 +8,8 @@
 - `--lang` - specifies subtitle language (kinda required)
 - `-y, --year` - the year a movie or a tv series was released (optional)
 - `--list` - pretty prints episodes if specified for TV series
-- `--path` - extracts production information from file name
+- `--file` - extracts production information from file name
+- `--out` - directory where files are to be downloaded
 
 ### Examples
 

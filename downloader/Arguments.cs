@@ -8,7 +8,8 @@ public struct Arguments {
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
     private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
     private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
-    private static readonly string[] PATH_IDENTIFIERS = {"--path"};
+    private static readonly string[] FILE_IDENTIFIERS = {"--file"};
+    private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
 
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
@@ -20,6 +21,8 @@ public struct Arguments {
 
     public bool isMovie = true;
     
+    public string outputDirectory = ".";
+
     public uint season = 0;
     public uint episode = 0;
     
@@ -152,7 +155,7 @@ public struct Arguments {
                 continue;
             }
 
-            int pathIndex = StartsWith(currentArg, PATH_IDENTIFIERS);
+            int pathIndex = StartsWith(currentArg, FILE_IDENTIFIERS);
             if (pathIndex != -1) {
                 bool hasNext = i + 1 < args.Length;
                 if (hasNext) {
@@ -166,6 +169,20 @@ public struct Arguments {
                 continue;
             }
 
+            int outIndex = StartsWith(currentArg, OUTPUT_IDENTIFIERS);
+            if (outIndex != -1) {
+                bool hasNext = i + 1 < args.Length;
+                if (hasNext) {
+                    string outputPath = args[i + 1];
+                    i++;
+                    subtitle.outputDirectory = outputPath;
+                }
+                else {
+                    Console.WriteLine("An argument was expected. Help: --out <directory_path>");
+                }
+                continue;
+            }
+            
             if (currentArg.StartsWith('-')) {
                 Console.WriteLine($"Unrecognized argument identifier: {currentArg}");
                 continue;
@@ -304,6 +321,11 @@ public struct Arguments {
             }
         }
 
+        if (!Directory.Exists(outputDirectory)) {
+            Console.WriteLine($"Specified directory does not exist! {outputDirectory}");
+            return false;
+        }
+
         return true;
     }
     
@@ -414,7 +436,7 @@ public struct Arguments {
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
-        Console.WriteLine($"       {programName} --path [file path] [arguments...]");
+        Console.WriteLine($"       {programName} --file [file path] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
@@ -422,10 +444,11 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --path                        Extracts production details from filename");
+        Console.WriteLine("    --file                        Extracts production details from filename");
+        Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
         Console.WriteLine();
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
-        Console.WriteLine("File name provided with --path should follow any of the three formats: ");
+        Console.WriteLine("File name provided with --file should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
         Console.WriteLine(" - dashed: Production-Name-Year-SxEy");

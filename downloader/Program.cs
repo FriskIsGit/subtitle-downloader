@@ -1,11 +1,12 @@
 ﻿
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.2.3";
+    public const string VERSION = "1.3.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -40,7 +41,7 @@ class Program {
         string pageUrl = createSubtitleUrl(arguments.language, prod.id);
 
         if (arguments.isMovie) {
-            downloadSubtitle(api, pageUrl);
+            downloadSubtitle(api, pageUrl, arguments.outputDirectory);
         } else {
             string seasonsHtml = api.fetchHtml(pageUrl);
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
@@ -53,13 +54,13 @@ class Program {
                 Console.WriteLine("This episode has no subtitles for given language, try again with --lang all");
                 return;
             }
-            downloadSubtitle(api, episode.getPageUrl(), episode.name);
+            downloadSubtitle(api, episode.getPageUrl(), arguments.outputDirectory, episode.name);
         }
         
         Console.WriteLine("Finished");
     }
 
-    private static void downloadSubtitle(SubtitleAPI api, string pageURL, string? fileName = null) {
+    private static void downloadSubtitle(SubtitleAPI api, string pageURL, string outputDir, string? fileName = null) {
         string html = api.fetchHtml(pageURL);
         Console.WriteLine($"Scraping: {pageURL}");
 
@@ -70,12 +71,14 @@ class Program {
         }
         SubtitleRow bestSubtitle = selectSubtitle(rows);
         Console.WriteLine(bestSubtitle);
+
         if (fileName is null) {
             fileName = bestSubtitle.broadcastTitle;
         }
-
         fileName = sanitizeFileName(fileName);
-        var download = api.downloadSubtitle(bestSubtitle, fileName);
+        outputDir = correctOutputDirectory(outputDir);
+        string downloadedZip = outputDir == "." ? fileName + ".zip" : Path.Combine(outputDir, fileName) + ".zip";
+        var download = api.downloadSubtitle(bestSubtitle, downloadedZip);
         try {
             download.Wait();
         }
@@ -83,16 +86,23 @@ class Program {
             Console.WriteLine(e.Message);
             Environment.Exit(0);
         }
-        
-        string downloadedZip = fileName + ".zip";
-         
+
         if (download.Result) {
             Console.WriteLine("Unzipping..");
-            UnzipFile(downloadedZip);
+            UnzipFile(downloadedZip, outputDir);
         }
         Console.WriteLine("Cleaning up..");
         File.Delete(downloadedZip);
-        cleanupNFOs();
+        cleanupNFOs(outputDir);
+    }
+
+    private static string correctOutputDirectory(string outputDir) {
+        bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
+        // C# does not correctly identify drive path as absolute
+        if (isWindows && outputDir.EndsWith(':')) {
+            return outputDir + "/";
+        }
+        return outputDir;
     }
 
     private static string sanitizeFileName(string fileName) {
@@ -158,8 +168,8 @@ class Program {
         return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
-    private static void cleanupNFOs() {
-        string[] files = Directory.GetFiles(".");
+    private static void cleanupNFOs(string dir) {
+        string[] files = Directory.GetFiles(dir);
         foreach (var file in files) {
             if (file.EndsWith(".nfo")) {
                 File.Delete(file);
@@ -182,6 +192,10 @@ class Program {
     }
 
     private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {
+        if (rows.Count == 1) {
+            Console.WriteLine("Single result, proceeding.");
+            return rows[0];
+        }
         for (int i = 0; i < rows.Count; i++) {
             var prod = rows[i];
             Console.WriteLine($"#{i+1} " + prod.ToStringNoTitle());
@@ -361,9 +375,9 @@ class Program {
     }
 
     // Extract .zip that contains the .srt files
-    private static void UnzipFile(string zipPath) {
+    private static void UnzipFile(string zipPath, string outputDirectory) {
         try {
-            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, ".");
+            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, outputDirectory);
         } catch (IOException io) {
             Console.WriteLine(io.Message);
         }
