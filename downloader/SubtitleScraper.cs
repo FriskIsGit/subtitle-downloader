@@ -283,6 +283,47 @@ public class SubtitleScraper {
 
         return seasons;
     }
+
+    public static List<Language> ScrapeSubtitleLanguages(string html) {
+        HtmlDoc doc = new HtmlDoc(html);
+        int selectIndex = html.IndexOf("<select", StringComparison.Ordinal);
+        var ul = doc.FindFrom("select", selectIndex, ("name", "SubLanguageID", Compare.EXACT), 
+            ("id", "SubLanguageID", Compare.EXACT)
+        );
+        if (ul == null) {
+            return new List<Language>();
+        }
+        List<Language> languages = new List<Language>(128);
+        List<Tag> listElements = doc.ExtractTags(ul, "option");
+        foreach (Tag option in listElements) {
+            string name = doc.ExtractText(option);
+            string code = option.GetAttribute("value") ?? "";
+            var lang = new Language(name, code);
+            languages.Add(lang);
+        }
+        return languages;
+    }
+}
+
+public struct Language {
+    private const int LANGUAGE_NAME_LENGTH = 24;
+    private readonly string name;
+    private readonly string code;
+
+    public Language(string name, string code) {
+        this.name = name;
+        this.code = code;
+    }
+
+    public override string ToString() {
+        StringBuilder builder = new StringBuilder(name);
+        int diff = LANGUAGE_NAME_LENGTH - name.Length;
+        for (int i = 0; i < diff; i++) {
+            builder.Append(' ');
+        }
+        builder.Append(code);
+        return builder.ToString();
+    }
 }
 
 public class SubtitleRow {

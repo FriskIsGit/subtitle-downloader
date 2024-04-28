@@ -2,11 +2,12 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using WebScrapper.scrapper;
 
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.3.1";
+    public const string VERSION = "1.3.2";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -15,6 +16,13 @@ class Program {
                 return;
             case 1 when args[0].StartsWith("-v"):
                 Console.WriteLine(VERSION);
+                return;
+            case 1 when args[0].Equals("-languages"):
+                string html = HtmlDoc.fetchHtml("https://www.opensubtitles.org/en/search/subs");
+                var languages = SubtitleScraper.ScrapeSubtitleLanguages(html);
+                foreach (var lang in languages) {
+                    Console.WriteLine(lang);
+                }
                 return;
         }
 
