@@ -8,7 +8,7 @@ public struct Arguments {
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
     private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
     private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
-    private static readonly string[] FILE_IDENTIFIERS = {"--file"};
+    private static readonly string[] FILE_IDENTIFIERS = {"--from"};
     private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
 
     private const int MIN_YEAR = 1900;
@@ -436,7 +436,7 @@ public struct Arguments {
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
-        Console.WriteLine($"       {programName} --file [file path] [arguments...]");
+        Console.WriteLine($"       {programName} --from [file path] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
@@ -444,11 +444,11 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --file                        Extracts production details from filename");
+        Console.WriteLine("    --from                        Extracts production details from filename");
         Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
         Console.WriteLine();
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
-        Console.WriteLine("File name provided with --file should have an extension & follow any of the three formats: ");
+        Console.WriteLine("File name provided with --from should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
         Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
