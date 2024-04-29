@@ -432,7 +432,6 @@ public struct Arguments {
 
     public static void PrintHelp() {
         string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-        Console.WriteLine();
         Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
@@ -447,17 +446,18 @@ public struct Arguments {
         Console.WriteLine("    --from                        Extracts production details from filename");
         Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
         Console.WriteLine();
+        Console.WriteLine("To print available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
         Console.WriteLine("File name provided with --from should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
         Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
-        Console.WriteLine("To print available subtitle languages and their codes use: -languages");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
         Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
         Console.WriteLine($"  {programName} \"fast and the furious\"");
+        Console.WriteLine();
     }
     
     public override string ToString() {
