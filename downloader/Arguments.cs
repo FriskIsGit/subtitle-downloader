@@ -441,7 +441,7 @@ public struct Arguments {
         Console.WriteLine("Options:");
         Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
         Console.WriteLine("    -e, -E, --episode             Episode number of a tv series (episode > 0)");
-        Console.WriteLine("    --lang                        Subtitle language written in English (at least 3 characters)");
+        Console.WriteLine("    --lang                        Subtitle language code (3 letters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
         Console.WriteLine("    --from                        Extracts production details from filename");
@@ -452,7 +452,7 @@ public struct Arguments {
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
         Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
-        Console.WriteLine("To fetch and print available subtitle languages use: -languages");
+        Console.WriteLine("To print available subtitle languages and their codes use: -languages");
         Console.WriteLine();
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
@@ -492,5 +492,114 @@ public struct Arguments {
             default:
                 return false;
         }
+    }
+    
+    public static void PrintLanguages() {
+        const string LANGUAGES = @"
+ALL                    all
+Abkhazian              abk
+Afrikaans              afr
+Albanian               alb
+Amharic                amh
+Arabic                 ara
+Aragonese              arg
+Armenian               arm
+Assamese               asm
+Asturian               ast
+Azerbaijani            aze
+Basque                 baq
+Belarusian             bel
+Bengali                ben
+Bosnian                bos
+Breton                 bre
+Bulgarian              bul
+Burmese                bur
+Catalan                cat
+Chinese (Cantonese)    zhc
+Chinese (simplified)   chi
+Chinese (traditional)  zht
+Chinese bilingual      zhe
+Croatian               hrv
+Czech                  cze
+Danish                 dan
+Dari                   prs
+Dutch                  dut
+English                eng
+Esperanto              epo
+Estonian               est
+Extremaduran           ext
+Finnish                fin
+French                 fre
+Gaelic                 gla
+Galician               glg
+Georgian               geo
+German                 ger
+Greek                  ell
+Hebrew                 heb
+Hindi                  hin
+Hungarian              hun
+Icelandic              ice
+Igbo                   ibo
+Indonesian             ind
+Interlingua            ina
+Irish                  gle
+Italian                ita
+Japanese               jpn
+Kannada                kan
+Kazakh                 kaz
+Khmer                  khm
+Korean                 kor
+Kurdish                kur
+Latvian                lav
+Lithuanian             lit
+Luxembourgish          ltz
+Macedonian             mac
+Malay                  may
+Malayalam              mal
+Manipuri               mni
+Marathi                mar
+Mongolian              mon
+Montenegrin            mne
+Navajo                 nav
+Nepali                 nep
+Northern Sami          sme
+Norwegian              nor
+Occitan                oci
+Odia                   ori
+Persian                per
+Polish                 pol
+Portuguese             por
+Portuguese (BR)        pob
+Portuguese (MZ)        pom
+Pushto                 pus
+Romanian               rum
+Russian                rus
+Santali                sat
+Serbian                scc
+Sindhi                 snd
+Sinhalese              sin
+Slovak                 slo
+Slovenian              slv
+Somali                 som
+Spanish                spa
+Spanish (EU)           spn
+Spanish (LA)           spl
+Swahili                swa
+Swedish                swe
+Syriac                 syr
+Tagalog                tgl
+Tamil                  tam
+Tatar                  tat
+Telugu                 tel
+Thai                   tha
+Toki Pona              tok
+Turkish                tur
+Turkmen                tuk
+Ukrainian              ukr
+Urdu                   urd
+Uzbek                  uzb
+Vietnamese             vie
+Welsh                  wel";
+        Console.WriteLine(LANGUAGES);
     }
 }
