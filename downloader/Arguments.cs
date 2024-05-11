@@ -349,7 +349,7 @@ public struct Arguments {
 
     private static void FailExit(string message) {
         Console.WriteLine(message);
-        Environment.Exit(0);
+        Environment.Exit(1);
     }
     
     public static (string title, uint year) ParseTitleYear(string name) {

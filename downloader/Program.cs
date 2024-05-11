@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.3.4";
+    public const string VERSION = "1.4.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -86,8 +86,7 @@ class Program {
             download.Wait();
         }
         catch (Exception e) {
-            Console.WriteLine(e.Message);
-            Environment.Exit(0);
+            FailExit(e.Message);
         }
 
         if (download.Result) {
@@ -108,6 +107,11 @@ class Program {
         return outputDir;
     }
 
+    private static void FailExit(string message) {
+        Console.WriteLine(message);
+        Environment.Exit(1);
+    }
+    
     private static string sanitizeFileName(string fileName) {
         StringBuilder str = new(fileName.Length);
         foreach (char chr in fileName) {
@@ -140,8 +144,7 @@ class Program {
         }
         
         if (seasonIndex == -1) {
-            Console.WriteLine($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
-            Environment.Exit(0);
+            FailExit($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
         }
 
         Season season = seasons[seasonIndex];
@@ -150,8 +153,8 @@ class Program {
                 return episode;
             }
         }
-        Console.WriteLine($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
-        Environment.Exit(0);
+
+        FailExit($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
         throw new UnreachableException();
     }
 
@@ -267,8 +270,7 @@ class Program {
         keepKind(productions, desiredSubtitle.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
-                Console.WriteLine("ERROR: No productions remained after filtering");
-                Environment.Exit(0);
+                FailExit("ERROR: No productions remained after filtering");
                 break;
             case 1:
                 return productions[0];
@@ -329,7 +331,7 @@ class Program {
                     Console.WriteLine(prod);
                 }
 
-                Environment.Exit(0);
+                Environment.Exit(1);
             }
         }
 
@@ -356,7 +358,7 @@ class Program {
         }
 
         // Choose based on total (popularity?)
-        Production bestProduction = new Production();
+        Production bestProduction = productions[0];
         uint max = 0;
         foreach (var production in productions) {
             if (production.total > max) {
