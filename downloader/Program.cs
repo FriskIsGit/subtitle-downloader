@@ -6,14 +6,14 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.3.3";
+    public const string VERSION = "1.3.4";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
-            case 1 when args[0].StartsWith("-h"):
+            case 1 when args[0].Equals("-h") || args[0].Equals("--help"):
                 Arguments.PrintHelp();
                 return;
-            case 1 when args[0].StartsWith("-v"):
+            case 1 when args[0].Equals("-v") || args[0].StartsWith("--ver"):
                 Console.WriteLine(VERSION);
                 return;
             case 1 when args[0].Equals("-languages"):
@@ -267,7 +267,9 @@ class Program {
         keepKind(productions, desiredSubtitle.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
-                throw new Exception("No productions remained after filtering");
+                Console.WriteLine("ERROR: No productions remained after filtering");
+                Environment.Exit(0);
+                break;
             case 1:
                 return productions[0];
         }
