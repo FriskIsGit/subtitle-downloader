@@ -40,15 +40,19 @@ public class SubtitleAPI {
     }
     
     // OpenSubtitles API is quirky
-    public List<Production> searchSubtitle(Arguments arguments) {
-        string languageId = toSubLanguageID(arguments.language);
-        StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{arguments.title}/SubLanguageId-{languageId}");
+    public List<Production> searchProductions(Arguments arguments) {
+        StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{arguments.title}");
         url.Append(arguments.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");
         if (arguments.year != 0) {
             url.Append($"/MovieYear-{arguments.year}");
         }
-        var response = fetchHtml(url.ToString());
-        return SubtitleScraper.scrapeSearchResults(response, arguments.isMovie);
+        var simpleResponse = fetchHtml(url.ToString());
+        // it's possible to be redirected to the target website after search if there's only 1 result
+        string? location = simpleResponse.lastLocation;
+        if (location != null && location.Contains("/imdbid-")) {
+            Console.WriteLine("Detected direct redirect!");
+        }
+        return SubtitleScraper.scrapeSearchResults(simpleResponse.content, arguments.isMovie);
     }
 
     public static string toSubLanguageID(string language) {
@@ -73,7 +77,7 @@ public class SubtitleAPI {
         return new SimpleResponse(code, content);
     }
     
-    public string fetchHtml(string url) {
+    public SimpleResponse fetchHtml(string url) {
         var getRequest = new HttpRequestMessage {
             RequestUri = new Uri(url),
             Method = HttpMethod.Get,
@@ -83,8 +87,9 @@ public class SubtitleAPI {
         getRequest.Headers.AcceptLanguage.ParseAdd("en-US;q=0.7");
         getRequest.Headers.Add("Set-GPC", "1");
         var response = client.Send(getRequest);
+        string content = response.Content.ReadAsStringAsync().Result;
         if (response.StatusCode == HttpStatusCode.OK) {
-            return response.Content.ReadAsStringAsync().Result;
+            return new SimpleResponse(response.StatusCode, content, url);
         }
 
         var statusCode = response.StatusCode;
@@ -94,7 +99,7 @@ public class SubtitleAPI {
         }
         
         Console.WriteLine("Response Code: " + statusCode);
-        return response.Content.ReadAsStringAsync().Result;
+        return new SimpleResponse(response.StatusCode, content, url);
     }
     
     public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string zipPath) {
@@ -129,8 +134,14 @@ public class SubtitleAPI {
 public struct SimpleResponse {
     public readonly HttpStatusCode statusCode;
     public readonly string content;
+    public readonly string? lastLocation = null;
     public SimpleResponse(HttpStatusCode code, string content) {
         statusCode = code;
         this.content = content;
+    }
+    public SimpleResponse(HttpStatusCode code, string content, string lastLocation) {
+        statusCode = code;
+        this.content = content;
+        this.lastLocation = lastLocation;
     }
 }

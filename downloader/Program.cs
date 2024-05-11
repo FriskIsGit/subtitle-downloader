@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.4.0";
+    public const string VERSION = "1.4.1";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -32,7 +32,7 @@ class Program {
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No suggested productions found, falling back to search");
-            productions = api.searchSubtitle(arguments);
+            productions = api.searchProductions(arguments);
             if (productions.Count == 0) {
                 Console.WriteLine("Fallback failed!");
                 return;
@@ -46,7 +46,7 @@ class Program {
         if (arguments.isMovie) {
             downloadSubtitle(api, pageUrl, arguments.outputDirectory);
         } else {
-            string seasonsHtml = api.fetchHtml(pageUrl);
+            string seasonsHtml = api.fetchHtml(pageUrl).content;
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
             if (arguments.listSeries) {
                 prettyPrint(seasons);
@@ -64,7 +64,7 @@ class Program {
     }
 
     private static void downloadSubtitle(SubtitleAPI api, string pageURL, string outputDir, string? fileName = null) {
-        string html = api.fetchHtml(pageURL);
+        string html = api.fetchHtml(pageURL).content;
         Console.WriteLine($"Scraping: {pageURL}");
 
         List<SubtitleRow> rows = SubtitleScraper.ScrapeSubtitleTable(html);
