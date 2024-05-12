@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.4.1";
+    public const string VERSION = "1.4.2";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -313,13 +313,8 @@ class Program {
         if (desiredSubtitle.year != 0) {
             bool hasMatchingYear = false;
             foreach (var production in productions) {
-                if (production.year == 0) {
-                    // If year is not given by the API ignore this constraint
-                    hasMatchingYear = true;
-                    break;
-                }
-
-                if (production.year == desiredSubtitle.year) {
+                // If year is not given by the API ignore this constraint OR compare if present
+                if (production.year == 0 || production.year == desiredSubtitle.year) {
                     hasMatchingYear = true;
                     break;
                 }
@@ -335,14 +330,14 @@ class Program {
             }
         }
 
-        // NAME&YEAR
+        // Exact NAME&YEAR
         foreach (var production in productions) {
             if (production.name == desiredSubtitle.title && production.year == desiredSubtitle.year) {
                 return production;
             }
         }
 
-        // LOWERCASE NAME&YEAR
+        // IgnoreCase NAME&YEAR
         foreach (var production in productions) {
             if (string.Equals(production.name, desiredSubtitle.title, StringComparison.CurrentCultureIgnoreCase)
                 && production.year == desiredSubtitle.year) {
@@ -353,6 +348,13 @@ class Program {
         // just NAME
         foreach (var production in productions) {
             if (production.name == desiredSubtitle.title) {
+                return production;
+            }
+        }
+        
+        // just NAME (ignore case)
+        foreach (var production in productions) {
+            if (string.Equals(production.name, desiredSubtitle.title, StringComparison.CurrentCultureIgnoreCase)) {
                 return production;
             }
         }
