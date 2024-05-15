@@ -43,7 +43,9 @@ public class SubtitleScraper {
                 subtitles.Add(subtitleRow);
                 continue;
             }
-            subtitleRow.downloadURL = downloadAnchor.GetAttribute("href") ?? "";
+
+            string href = downloadAnchor.GetAttribute("href") ?? "";
+            subtitleRow.setDownloadURL(href);
             string timesDownloaded = doc.ExtractText(downloadAnchor);
             int x = timesDownloaded.IndexOf('x');
             try {
@@ -163,7 +165,8 @@ public class SubtitleScraper {
         }
 
         SubtitleRow subtitle = new SubtitleRow();
-        subtitle.downloadURL = downloadAnchor.GetAttribute("href") ?? "";
+        string href = downloadAnchor.GetAttribute("href") ?? "";
+        subtitle.setDownloadURL(href);
         subtitle.broadcastTitle = downloadAnchor.GetAttribute("data-product-title") ?? "";
         
         return new List<SubtitleRow>(1) { subtitle };
@@ -330,13 +333,14 @@ public class SubtitleRow {
     private const string DOWNLOAD_URL = "https://dl.opensubtitles.org/en/download/sub/";
     // title is either movie name or episode name
     public string broadcastTitle = "";
-    public string downloadURL = "";
     public string format = "";
     public string flag = "";
 
-    public double rating;
-    public int downloads;
+    private string downloadURL = "";
     
+    public int downloads;
+    public double rating;
+
     public void fixTitle() {
         StringBuilder fixedTitle = new(broadcastTitle);
         fixedTitle.Replace('\n', ' ');
@@ -360,23 +364,25 @@ public class SubtitleRow {
     }
     
     public override string ToString() {
-        return $"{broadcastTitle} {getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
+        return $"{broadcastTitle} {getDownloadURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
-    public string ToStringNoTitle() {
-        return $"{getFullURL()} format:{format} rating:{rating} downloads:{downloads}";
-    }
-
-    public string getFullURL() {
-        return $"{DOWNLOAD_URL}{getLastPart()}";
+    public string ToStringAsElement() {
+        return $"{getDownloadURL()} format:{format} downloads:{downloads}";
     }
 
-    private string getLastPart() {
-        int slash = downloadURL.LastIndexOf('/');
+    public void setDownloadURL(string href) {
+        int slash = href.LastIndexOf('/');
         if (slash == -1) {
-            return downloadURL;
+            downloadURL = href;
         }
-        return downloadURL[(slash+1)..];
+        string sub_id = href[(slash+1)..];
+        downloadURL = $"{DOWNLOAD_URL}{sub_id}";
     }
+
+    public string getDownloadURL() {
+        return downloadURL;
+    }
+    
 }
 
 public class Season {

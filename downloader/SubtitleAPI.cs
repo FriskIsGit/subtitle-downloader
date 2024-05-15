@@ -103,7 +103,7 @@ public class SubtitleAPI {
     }
     
     public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string zipPath) {
-        string resourceUrl = subtitle.getFullURL();
+        string resourceUrl = subtitle.getDownloadURL();
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
         if (response.RequestMessage?.RequestUri is null) {
             // Should never be here executed

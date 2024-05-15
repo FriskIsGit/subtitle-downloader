@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.4.2";
+    public const string VERSION = "1.4.3";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -197,22 +197,23 @@ class Program {
         rows.Sort((e1, e2) => e2.downloads.CompareTo(e1.downloads));
     }
 
-    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> rows) {
-        if (rows.Count == 1) {
+    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> sortedRows) {
+        if (sortedRows.Count == 1) {
             Console.WriteLine("Single result, proceeding.");
-            return rows[0];
+            return sortedRows[0];
         }
-        for (int i = 0; i < rows.Count; i++) {
+        // OLD
+        /*for (int i = 0; i < rows.Count; i++) {
             var prod = rows[i];
-            Console.WriteLine($"#{i+1} " + prod.ToStringNoTitle());
-        }
-
+            Console.WriteLine($"#{i+1} " + prod.ToStringAsElement());
+        }*/
+        prettyPrintInTable(sortedRows);
         
-        if (rows.Count > 0) {
-            string title = rows[0].broadcastTitle;
+        if (sortedRows.Count > 0) {
+            string title = sortedRows[0].broadcastTitle;
             Console.WriteLine($"{title}");
         }
-        Console.WriteLine($"Select subtitle to download ({1}-{rows.Count}):");
+        Console.WriteLine($"Select subtitle to download ({1}-{sortedRows.Count}):");
         while (true) {
             string? input = Console.ReadLine();
             if (input is null || input.Length == 0) {
@@ -226,14 +227,100 @@ class Program {
                 continue;
             }
 
-            if (num < 1 || num > rows.Count) {
+            if (num < 1 || num > sortedRows.Count) {
                 Console.WriteLine("Out of bounds number");
                 continue;
             }
-            return rows[num - 1];
+            return sortedRows[num - 1];
         }
     }
 
+    /*
+         | Url         | Format | Downloads 
+      ---+-------------+--------+-----------
+       1 | https://... | srt    | 132989    
+       2 | https://... | vtt    | 2999      
+       3 | https://... | ssa    | 4        
+     */
+    private static void prettyPrintInTable(List<SubtitleRow> sortedRows) {
+        int largestLink = 0;
+        foreach (var sub in sortedRows) {
+            largestLink = Math.Max(sub.getDownloadURL().Length, largestLink);
+        }
+        
+        int largestDownload = Math.Max(9, sortedRows[0].downloads.ToString().Length);
+        int largestPositionNum = sortedRows.Count.ToString().Length;
+        
+        largestLink += 2;
+        largestDownload += 2;
+        largestPositionNum += 2;
+        
+        string[] headers = { " ", "Download URL", "Format", "Downloads"};
+        int[] lengths = { largestPositionNum, largestLink, 8, largestDownload };
+        StringBuilder separator = GetTableHorizontalSeparator(lengths);
+        
+        StringBuilder table = new StringBuilder(128);
+        table.Append(separator);
+        table.Append("\n|");
+        // HEADER FORMATTING
+        for (var i = 0; i < lengths.Length; i++) {
+            int length = lengths[i];
+            
+            table.Append(CenterPad(headers[i], length));
+            table.Append('|');
+        }
+        table.Append('\n');
+        table.Append(separator);
+        table.Append('\n');
+        
+        // SUBTITLE ROWS
+        for (var r = 0; r < sortedRows.Count; r++) {
+            var sub = sortedRows[r];
+            int index = r + 1;
+            table.Append('|');
+            table.Append(CenterPad(index.ToString(), lengths[0]));
+            table.Append('|');
+            table.Append(CenterPad(sub.getDownloadURL(), lengths[1]));
+            table.Append('|');
+            table.Append(CenterPad(sub.format, lengths[2]));
+            table.Append('|');
+            table.Append(CenterPad(sub.downloads.ToString(), lengths[3]));
+            table.Append("|\n");
+        }
+        table.Append(separator);
+        Console.WriteLine(table);
+    }
+
+    private static StringBuilder GetTableHorizontalSeparator(params int[] lengths) {
+        StringBuilder tableRow = new StringBuilder(lengths.Sum() + lengths.Length);
+        tableRow.Append('+');
+        foreach (var len in lengths) {
+            AppendTimes(tableRow, len, '-');
+            tableRow.Append('+');
+        }
+        return tableRow;
+    }
+    
+    private static void AppendTimes(StringBuilder str, int length, char chr) {
+        for (int i = 0; i < length; i++) {
+            str.Append(chr);
+        }
+    }
+    private static StringBuilder CenterPad(string str, int targetLen) {
+        int remainingLen = targetLen - str.Length;
+        int halfLen = (remainingLen + 1) / 2;
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < halfLen; i++) {
+            builder.Append(' ');
+        }
+        builder.Append(str);
+        int rightLen = remainingLen - halfLen;
+        for (int i = 0; i < rightLen; i++) {
+            builder.Append(' ');
+        }
+        return builder;
+    }
+    
     private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows) {
         SubtitleRow bestSubtitle = new SubtitleRow();
         double max = 0;
