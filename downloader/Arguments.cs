@@ -8,6 +8,7 @@ public struct Arguments {
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
     private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
     private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
+    private static readonly string[] SKIP_SELECT_IDENTIFIERS = {"--skip-select"};
     private static readonly string[] FILE_IDENTIFIERS = {"--from"};
     private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
 
@@ -18,7 +19,7 @@ public struct Arguments {
     public string title = "";
     public string language = "all";
     public uint year = 0;
-
+    
     public bool isMovie = true;
     
     public string outputDirectory = ".";
@@ -27,7 +28,8 @@ public struct Arguments {
     public uint episode = 0;
     
     public bool listSeries = false;
-
+    public bool skipSelect = false;
+    
     private bool providedSeason = false;
     private bool providedEpisode = false;
 
@@ -152,6 +154,12 @@ public struct Arguments {
             int listIndex = EqualsAny(currentArg, LIST_IDENTIFIERS);
             if (listIndex != -1) {
                 subtitle.listSeries = true;
+                continue;
+            }
+            
+            int skipSelectIndex = EqualsAny(currentArg, SKIP_SELECT_IDENTIFIERS);
+            if (skipSelectIndex != -1) {
+                subtitle.skipSelect = true;
                 continue;
             }
 
@@ -443,6 +451,7 @@ public struct Arguments {
         Console.WriteLine("    --lang                        Subtitle language code (3 letters)");
         Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
         Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
+        Console.WriteLine("    --skip-select                 [OPTIONAL] Automatically selects subtitle to download");
         Console.WriteLine("    --from                        Extracts production details from filename");
         Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
         Console.WriteLine();

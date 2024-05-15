@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.4.3";
+    public const string VERSION = "1.5.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -22,7 +22,6 @@ class Program {
         }
 
         var arguments = Arguments.Parse(args);
-        Console.WriteLine(arguments);
         if (!arguments.Validate()) {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
@@ -44,7 +43,7 @@ class Program {
         string pageUrl = createSubtitleUrl(arguments.language, prod.id);
 
         if (arguments.isMovie) {
-            downloadSubtitle(api, pageUrl, arguments.outputDirectory);
+            downloadSubtitle(api, pageUrl, arguments);
         } else {
             string seasonsHtml = api.fetchHtml(pageUrl).content;
             List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
@@ -57,13 +56,13 @@ class Program {
                 Console.WriteLine("This episode has no subtitles for given language, try again with --lang all");
                 return;
             }
-            downloadSubtitle(api, episode.getPageUrl(), arguments.outputDirectory, episode.name);
+            downloadSubtitle(api, episode.getPageUrl(), arguments, episode.name);
         }
         
         Console.WriteLine("Finished");
     }
 
-    private static void downloadSubtitle(SubtitleAPI api, string pageURL, string outputDir, string? fileName = null) {
+    private static void downloadSubtitle(SubtitleAPI api, string pageURL, Arguments args, string? fileName = null) {
         string html = api.fetchHtml(pageURL).content;
         Console.WriteLine($"Scraping: {pageURL}");
 
@@ -72,14 +71,14 @@ class Program {
             Console.WriteLine("No subtitle elements were scraped");
             return;
         }
-        SubtitleRow bestSubtitle = selectSubtitle(rows);
+        SubtitleRow bestSubtitle = selectSubtitle(rows, args);
         Console.WriteLine(bestSubtitle);
 
         if (fileName is null) {
             fileName = bestSubtitle.broadcastTitle;
         }
-        fileName = sanitizeFileName(fileName);
-        outputDir = correctOutputDirectory(outputDir);
+        fileName = Utils.sanitizeFileName(fileName);
+        string outputDir = Utils.correctOutputDirectory(args.outputDirectory);
         string downloadedZip = outputDir == "." ? fileName + ".zip" : Path.Combine(outputDir, fileName) + ".zip";
         var download = api.downloadSubtitle(bestSubtitle, downloadedZip);
         try {
@@ -91,47 +90,16 @@ class Program {
 
         if (download.Result) {
             Console.WriteLine("Unzipping..");
-            UnzipFile(downloadedZip, outputDir);
+            Utils.unzipFile(downloadedZip, outputDir);
         }
         Console.WriteLine("Cleaning up..");
         File.Delete(downloadedZip);
-        cleanupNFOs(outputDir);
-    }
-
-    private static string correctOutputDirectory(string outputDir) {
-        bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
-        // C# does not correctly identify drive path as absolute
-        if (isWindows && outputDir.EndsWith(':')) {
-            return outputDir + "/";
-        }
-        return outputDir;
+        Utils.cleanupNFOs(outputDir);
     }
 
     private static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);
-    }
-    
-    private static string sanitizeFileName(string fileName) {
-        StringBuilder str = new(fileName.Length);
-        foreach (char chr in fileName) {
-            switch (chr) {
-                case '<':
-                case '>':
-                case ':':
-                case '/':
-                case '\\':
-                case '"':
-                case '|':
-                case '?':
-                case '*':
-                    break;
-                default:
-                    str.Append(chr);
-                    break;
-            }
-        }
-        return str.ToString();
     }
 
     private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
@@ -174,23 +142,12 @@ class Program {
         return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
-    private static void cleanupNFOs(string dir) {
-        string[] files = Directory.GetFiles(dir);
-        foreach (var file in files) {
-            if (file.EndsWith(".nfo")) {
-                File.Delete(file);
-                break;
-            }
-        }
-    }
-
-    private static SubtitleRow selectSubtitle(List<SubtitleRow> rows) {
+    private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
         sortSubtitleByDownloads(rows);
-        if (USER_SELECT_SUBTITLE) {
-            return userSelectsSubtitle(rows);
+        if (args.skipSelect) {
+            return selectBestSubtitle(rows);
         }
-
-        return selectBestSubtitle(rows);
+        return userSelectsSubtitle(rows);
     }
 
     private static void sortSubtitleByDownloads(List<SubtitleRow> rows) {
@@ -207,7 +164,8 @@ class Program {
             var prod = rows[i];
             Console.WriteLine($"#{i+1} " + prod.ToStringAsElement());
         }*/
-        prettyPrintInTable(sortedRows);
+        string table = Utils.prettyFormatSubtitlesInTable(sortedRows);
+        Console.WriteLine(table);
         
         if (sortedRows.Count > 0) {
             string title = sortedRows[0].broadcastTitle;
@@ -234,127 +192,21 @@ class Program {
             return sortedRows[num - 1];
         }
     }
-
-    /*
-         | Url         | Format | Downloads 
-      ---+-------------+--------+-----------
-       1 | https://... | srt    | 132989    
-       2 | https://... | vtt    | 2999      
-       3 | https://... | ssa    | 4        
-     */
-    private static void prettyPrintInTable(List<SubtitleRow> sortedRows) {
-        int largestLink = 0;
-        foreach (var sub in sortedRows) {
-            largestLink = Math.Max(sub.getDownloadURL().Length, largestLink);
-        }
-        
-        int largestDownload = Math.Max(9, sortedRows[0].downloads.ToString().Length);
-        int largestPositionNum = sortedRows.Count.ToString().Length;
-        
-        largestLink += 2;
-        largestDownload += 2;
-        largestPositionNum += 2;
-        
-        string[] headers = { " ", "Download URL", "Format", "Downloads"};
-        int[] lengths = { largestPositionNum, largestLink, 8, largestDownload };
-        StringBuilder separator = GetTableHorizontalSeparator(lengths);
-        
-        StringBuilder table = new StringBuilder(128);
-        table.Append(separator);
-        table.Append("\n|");
-        // HEADER FORMATTING
-        for (var i = 0; i < lengths.Length; i++) {
-            int length = lengths[i];
-            
-            table.Append(CenterPad(headers[i], length));
-            table.Append('|');
-        }
-        table.Append('\n');
-        table.Append(separator);
-        table.Append('\n');
-        
-        // SUBTITLE ROWS
-        for (var r = 0; r < sortedRows.Count; r++) {
-            var sub = sortedRows[r];
-            int index = r + 1;
-            table.Append('|');
-            table.Append(CenterPad(index.ToString(), lengths[0]));
-            table.Append('|');
-            table.Append(CenterPad(sub.getDownloadURL(), lengths[1]));
-            table.Append('|');
-            table.Append(CenterPad(sub.format, lengths[2]));
-            table.Append('|');
-            table.Append(CenterPad(sub.downloads.ToString(), lengths[3]));
-            table.Append("|\n");
-        }
-        table.Append(separator);
-        Console.WriteLine(table);
-    }
-
-    private static StringBuilder GetTableHorizontalSeparator(params int[] lengths) {
-        StringBuilder tableRow = new StringBuilder(lengths.Sum() + lengths.Length);
-        tableRow.Append('+');
-        foreach (var len in lengths) {
-            AppendTimes(tableRow, len, '-');
-            tableRow.Append('+');
-        }
-        return tableRow;
-    }
-    
-    private static void AppendTimes(StringBuilder str, int length, char chr) {
-        for (int i = 0; i < length; i++) {
-            str.Append(chr);
-        }
-    }
-    private static StringBuilder CenterPad(string str, int targetLen) {
-        int remainingLen = targetLen - str.Length;
-        int halfLen = (remainingLen + 1) / 2;
-        StringBuilder builder = new StringBuilder();
-        for (int i = 0; i < halfLen; i++) {
-            builder.Append(' ');
-        }
-        builder.Append(str);
-        int rightLen = remainingLen - halfLen;
-        for (int i = 0; i < rightLen; i++) {
-            builder.Append(' ');
-        }
-        return builder;
-    }
     
     private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows) {
-        SubtitleRow bestSubtitle = new SubtitleRow();
-        double max = 0;
         foreach (var subtitle in rows) {
             if (subtitle.format != "" && subtitle.format != "srt" ) {
                 continue;
             }
-            if (subtitle.rating > max) {
-                max = subtitle.rating;
-                bestSubtitle = subtitle;
-            }
+            return subtitle;
         }
-
-        if (max == 0) {
-            // Choose based on most downloads (popularity)
-            foreach (var subtitle in rows) {
-                if (subtitle.format != "" && subtitle.format != "srt" ) {
-                    continue;
-                }
-                if (subtitle.downloads > max) {
-                    max = subtitle.downloads;
-                    bestSubtitle = subtitle;
-                }
-            }
-        }
-        return max == 0 ? rows[0] : bestSubtitle;
+        return rows[0];
     }
 
-    private const bool USER_SELECT_SUBTITLE = true;
-    private const bool USER_SELECT_PRODUCTION = false;
-    
+    private const bool USER_SELECTS_PRODUCTION = false;
 
-    private static Production selectProduction(List<Production> productions, Arguments desiredSubtitle) {
-        keepKind(productions, desiredSubtitle.isMovie ? "movie" : "tv");
+    private static Production selectProduction(List<Production> productions, Arguments arguments) {
+        keepKind(productions, arguments.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
                 FailExit("ERROR: No productions remained after filtering");
@@ -363,10 +215,10 @@ class Program {
                 return productions[0];
         }
 
-        if (USER_SELECT_PRODUCTION) {
+        if (USER_SELECTS_PRODUCTION) {
             return userSelectsProduction(productions);
         }
-        return selectBestProduction(productions, desiredSubtitle);
+        return selectBestProduction(productions, arguments);
     }
 
     private static Production userSelectsProduction(List<Production> productions) {
@@ -467,15 +319,6 @@ class Program {
                 continue;
             }
             i++;
-        }
-    }
-
-    // Extract .zip that contains the .srt files
-    private static void UnzipFile(string zipPath, string outputDirectory) {
-        try {
-            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, outputDirectory);
-        } catch (IOException io) {
-            Console.WriteLine(io.Message);
         }
     }
 }
