@@ -231,7 +231,7 @@ public class SubtitleScraper {
             seasons.Add(season);
         }
 
-        Console.WriteLine($"Has unclassified episodes: {hasUnclassified}");
+        // Console.WriteLine($"Has unclassified episodes: {hasUnclassified}");
         int seasonIndex = -1;
         // Scrape episodes
         foreach (var tr in tableRows) {

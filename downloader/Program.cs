@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.5.0";
+    public const string VERSION = "1.5.1";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -72,7 +72,6 @@ class Program {
             return;
         }
         SubtitleRow bestSubtitle = selectSubtitle(rows, args);
-        Console.WriteLine(bestSubtitle);
 
         if (fileName is null) {
             fileName = bestSubtitle.broadcastTitle;
