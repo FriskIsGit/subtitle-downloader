@@ -49,8 +49,8 @@ public class SubtitleScraper {
             string timesDownloaded = doc.ExtractText(downloadAnchor);
             int x = timesDownloaded.IndexOf('x');
             try {
-                subtitleRow.downloads = int.Parse(timesDownloaded[..x]);
-            }catch { }
+                subtitleRow.downloads = ulong.Parse(timesDownloaded[..x]);
+            } catch { }
 
             var extensionSpan = doc.FindFrom("span", downloadAnchor.EndOffset, ("class", "p", Compare.EXACT));
             if (extensionSpan is null) {
@@ -338,7 +338,7 @@ public class SubtitleRow {
 
     private string downloadURL = "";
     
-    public int downloads;
+    public ulong downloads;
     public double rating;
 
     public void fixTitle() {
