@@ -11,6 +11,8 @@ public struct Arguments {
     private static readonly string[] SKIP_SELECT_IDENTIFIERS = {"--skip-select"};
     private static readonly string[] FILE_IDENTIFIERS = {"--from"};
     private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
+    private static readonly string[] HELP_IDENTIFIERS = {"--help", "-h"};
+   
 
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
@@ -177,7 +179,7 @@ public struct Arguments {
                 continue;
             }
 
-            int outIndex = StartsWith(currentArg, OUTPUT_IDENTIFIERS);
+            int outIndex = EqualsAny(currentArg, OUTPUT_IDENTIFIERS);
             if (outIndex != -1) {
                 bool hasNext = i + 1 < args.Length;
                 if (hasNext) {
@@ -189,6 +191,12 @@ public struct Arguments {
                     Console.WriteLine("An argument was expected. Help: --out <directory_path>");
                 }
                 continue;
+            }
+            
+            int helpIndex = StartsWith(currentArg, HELP_IDENTIFIERS);
+            if (helpIndex != -1) {
+                PrintHelp();
+                Environment.Exit(0);
             }
             
             if (currentArg.StartsWith('-')) {
@@ -454,8 +462,9 @@ public struct Arguments {
         Console.WriteLine("    --skip-select                 [OPTIONAL] Automatically selects subtitle to download");
         Console.WriteLine("    --from                        Extracts production details from filename");
         Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
+        Console.WriteLine("    -h, --help                    Display this information (regardless of flag order)");
         Console.WriteLine();
-        Console.WriteLine("To print available subtitle languages and their codes use: -languages");
+        Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
         Console.WriteLine("File name provided with --from should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
