@@ -31,7 +31,7 @@ Fetching TV series subtitles
 ```
 
 ### Building the project
-Run in root directory
+Run in project's root directory
 ```bash
 dotnet run
 ```
