@@ -7,19 +7,24 @@ public struct Arguments {
     private static readonly string[] EPISODE_IDENTIFIERS  = {"-e", "-E", "--episode"};
     private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
     private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
+    private static readonly string[] EXTENSION_IDENTIFIERS = {"--ext"};
     private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
     private static readonly string[] SKIP_SELECT_IDENTIFIERS = {"--skip-select"};
     private static readonly string[] FILE_IDENTIFIERS = {"--from"};
     private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
     private static readonly string[] HELP_IDENTIFIERS = {"--help", "-h"};
    
-
+    private static readonly string[] SUBTITLE_FORMATS = { 
+        "srt", "ssa", "vtt", "aqt", "gsub", "jss", "sub", "ttxt", "pjs", 
+        "psb", "rt", "smi", "stl", "ssf", "ass", "sbv", "usf", "idx"
+    };
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
     private const int MAX_EPISODES = 25000;
 
     public string title = "";
     public string language = "all";
+    public string extension = "";
     public uint year = 0;
     
     public bool isMovie = true;
@@ -150,6 +155,32 @@ public struct Arguments {
                 else {
                     Console.WriteLine("The language argument wasn't provided. Help: --lang <language>");
                 }
+                continue;
+            }
+            
+            int extIndex = StartsWith(currentArg, EXTENSION_IDENTIFIERS);
+            if (extIndex != -1) {
+                bool hasNext = i + 1 < args.Length;
+                if (!hasNext) {
+                    Console.WriteLine("The language argument wasn't provided. Help: --lang <language>");
+                    break;
+                }
+                string ext = args[i + 1].ToLower();
+                if (ext.Length < 2) {
+                    Console.WriteLine("Extension name is too short to match any known subtitle format, skipping!");
+                    i++;
+                    continue;
+                }
+                if (ext.StartsWith('.')) {
+                    ext = ext[1..];
+                }
+                if (!SUBTITLE_FORMATS.Contains(ext)) {
+                    Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
+                    i++;
+                    continue;
+                }
+                subtitle.extension = ext;
+                i++;                
                 continue;
             }
 
@@ -454,15 +485,16 @@ public struct Arguments {
         Console.WriteLine($"       {programName} --from [file path] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("    -s, -S, --season              Season number of a tv series (season > 0)");
-        Console.WriteLine("    -e, -E, --episode             Episode number of a tv series (episode > 0)");
-        Console.WriteLine("    --lang                        Subtitle language code (3 letters)");
-        Console.WriteLine("    -y, --year                    [OPTIONAL] Year number of a movie or tv series");
-        Console.WriteLine("    -ls, --list                   [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --skip-select                 [OPTIONAL] Automatically selects subtitle to download");
-        Console.WriteLine("    --from                        Extracts production details from filename");
-        Console.WriteLine("    --out                         Directory to which subtitles should be downloaded");
-        Console.WriteLine("    -h, --help                    Display this information (regardless of flag order)");
+        Console.WriteLine("    -s, -S, --season             Season number of a tv series (season > 0)");
+        Console.WriteLine("    -e, -E, --episode            Episode number of a tv series (episode > 0)");
+        Console.WriteLine("    --lang                       Subtitle language code (3 letters)");
+        Console.WriteLine("    -y, --year                   [OPTIONAL] Year number of a movie or tv series");
+        Console.WriteLine("    -ls, --list                  [OPTIONAL] Pretty print seasons and episodes");
+        Console.WriteLine("    --ext                        [OPTIONAL] Filter subtitles by extension");
+        Console.WriteLine("    --skip-select                [OPTIONAL] Automatically selects subtitle to download");
+        Console.WriteLine("    --from                       Extracts production details from filename");
+        Console.WriteLine("    --out                        Directory to which subtitles should be downloaded");
+        Console.WriteLine("    -h, --help                   Display this information (regardless of flag order)");
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");

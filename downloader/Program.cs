@@ -6,7 +6,7 @@ using System.Text;
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.5.3";
+    public const string VERSION = "1.5.4";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -127,7 +127,13 @@ class Program {
 
     private static void prettyPrint(List<Season> seasons) {
         foreach (var season in seasons) {
-            Console.WriteLine($"Season [{season.number}] Episodes: {season.episodes.Count}");
+            int seasonNumber = season.number;
+            int episodesCount = season.episodes.Count;
+            
+            if (seasonNumber == -1 && episodesCount == 0) {
+                continue;
+            }
+            Console.WriteLine($"Season [{seasonNumber}] Episodes: {episodesCount}");
             foreach (var episode in season.episodes) {
                 Console.WriteLine($"  {episode.number}. {episode.name}");
             }
@@ -144,25 +150,35 @@ class Program {
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
         sortSubtitleByDownloads(rows);
         if (args.skipSelect) {
-            return selectBestSubtitle(rows);
+            return selectBestSubtitle(rows, args.extension);
         }
-        return userSelectsSubtitle(rows);
+        return userSelectsSubtitle(rows, args.extension);
     }
 
     private static void sortSubtitleByDownloads(List<SubtitleRow> rows) {
         rows.Sort((e1, e2) => e2.downloads.CompareTo(e1.downloads));
     }
 
-    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> sortedRows) {
+    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> sortedRows, string extension) {
         if (sortedRows.Count == 1) {
             Console.WriteLine("Single result, proceeding.");
             return sortedRows[0];
         }
-        // OLD
-        /*for (int i = 0; i < rows.Count; i++) {
-            var prod = rows[i];
-            Console.WriteLine($"#{i+1} " + prod.ToStringAsElement());
-        }*/
+
+        if (extension != "") {
+            List<SubtitleRow> filtered = new List<SubtitleRow>();
+            foreach (var sub in sortedRows) {
+                // Unknown subtitle formats could be matching
+                if (sub.format == "" || sub.format == extension) {
+                    filtered.Add(sub);
+                }
+            }
+            if (filtered.Count == 0) {
+                FailExit("No subtitles remained after filtering by extension(" + extension + ") :(");
+            }
+            sortedRows = filtered;
+        }
+        
         string table = Utils.prettyFormatSubtitlesInTable(sortedRows);
         Console.WriteLine(table);
         
@@ -192,13 +208,21 @@ class Program {
         }
     }
     
-    private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows) {
+    private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows, string extension) {
+        bool applyFilter = extension != "";
         foreach (var subtitle in rows) {
-            if (subtitle.format != "" && subtitle.format != "srt" ) {
+            if (applyFilter) {
+                if (subtitle.format == extension) {
+                    return subtitle; 
+                }
+                continue;
+            }
+            if (subtitle.format != "" && subtitle.format != "srt") {
                 continue;
             }
             return subtitle;
         }
+        Console.WriteLine("Defaulted to first subtitle.");
         return rows[0];
     }
 
