@@ -162,7 +162,7 @@ public struct Arguments {
             if (extIndex != -1) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    Console.WriteLine("The language argument wasn't provided. Help: --lang <language>");
+                    Console.WriteLine("No extension provided. Use: --ext <extension>");
                     break;
                 }
                 string ext = args[i + 1].ToLower();
