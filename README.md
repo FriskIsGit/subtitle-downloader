@@ -30,3 +30,9 @@ Fetching TV series subtitles
 `./subtitles "The Gentlemen" -S1 -E3` --lang chinese
 ```
 
+### Building the project
+Run in project's root directory
+```bash
+dotnet run
+```
+
