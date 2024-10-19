@@ -41,7 +41,6 @@ public struct Arguments {
 
     public int shiftMs = 0;
     
-    public bool nameFromFile = false;
     public bool subtitleFromFile = false;
     public bool shift = false;
     public bool convert = false;
@@ -204,7 +203,6 @@ public struct Arguments {
                     FailExit("A path to file was expected. Help: --from <path>");
                 }
 
-                arguments.nameFromFile = true;
                 string path = args[i + 1];
                 i++;
                 parseFilename(Path.GetFileNameWithoutExtension(path), ref arguments);

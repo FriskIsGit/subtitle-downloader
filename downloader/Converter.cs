@@ -12,6 +12,10 @@ public class Converter {
      */
 
     public static (List<Subtitle>, Exception?) parse(string path, string extension) {
+        if (!File.Exists(path)) {
+            FailExit("Subtitle file does not exist! Ensure the path is correct.");
+        }
+
         switch (extension) {
             case "srt":
                 return parseSRT(path);
@@ -131,11 +135,12 @@ public class Converter {
         
         foreach (var sub in subtitles) {
             counter++;
-            file.Write(Encoding.UTF8.GetBytes(counter.ToString()));
+            file.Write(Encoding.UTF8.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
             file.Write(Encoding.UTF8.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
-            file.Write("\n\n"u8.ToArray());
+            // content already contains a new line
+            file.Write("\n"u8.ToArray());
         }
         file.Flush();
     }
