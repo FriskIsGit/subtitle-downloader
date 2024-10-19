@@ -3,16 +3,19 @@
 namespace subtitle_downloader.downloader; 
 
 public struct Arguments {
-    private static readonly string[] SEASON_IDENTIFIERS   = {"-s", "-S", "--season"};
-    private static readonly string[] EPISODE_IDENTIFIERS  = {"-e", "-E", "--episode"};
-    private static readonly string[] YEAR_IDENTIFIERS     = {"-y", "--year"};
-    private static readonly string[] LANGUAGE_IDENTIFIERS = {"--lang"};
-    private static readonly string[] EXTENSION_IDENTIFIERS = {"--ext"};
-    private static readonly string[] LIST_IDENTIFIERS = {"-ls", "--list"};
-    private static readonly string[] SKIP_SELECT_IDENTIFIERS = {"--skip-select"};
-    private static readonly string[] FILE_IDENTIFIERS = {"--from"};
-    private static readonly string[] OUTPUT_IDENTIFIERS = {"--out"};
-    private static readonly string[] HELP_IDENTIFIERS = {"--help", "-h"};
+    private static readonly string[] SEASON_FLAGS   = {"-s", "-S", "--season"};
+    private static readonly string[] EPISODE_FLAGS  = {"-e", "-E", "--episode"};
+    private static readonly string[] YEAR_FLAGS     = {"-y", "--year"};
+    private static readonly string[] LANGUAGE_FLAGS = {"--lang"};
+    private static readonly string[] EXTENSION_FILTER_FLAGS = {"--filter"};
+    private static readonly string[] LIST_FLAGS = {"-ls", "--list"};
+    private static readonly string[] SKIP_SELECT_FLAGS = {"--skip-select"};
+    private static readonly string[] FROM_FLAGS = {"--from"};
+    private static readonly string[] SUBTITLE_FLAGS = {"-sub", "--subtitle"};
+    private static readonly string[] SHIFT_FLAGS = { "--shift" };
+    private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
+    private static readonly string[] OUTPUT_FLAGS = {"--dest", "--out"};
+    private static readonly string[] HELP_FLAGS = {"-h", "-help", "--help"};
    
     private static readonly string[] SUBTITLE_FORMATS = { 
         "srt", "ssa", "vtt", "aqt", "gsub", "jss", "sub", "ttxt", "pjs", 
@@ -24,16 +27,18 @@ public struct Arguments {
 
     public string title = "";
     public string language = "all";
-    public string extension = "";
-    public uint year = 0;
-    
-    public bool isMovie = true;
-    
+    public string extensionFilter = "";
     public string outputDirectory = ".";
-
+    public string subtitlePath = "";
+    public string convertToExtension = "";
+    
     public uint season = 0;
     public uint episode = 0;
+    public uint year = 0;
+
+    public int shift = 0;
     
+    public bool isMovie = true;
     public bool listSeries = false;
     public bool skipSelect = false;
     
@@ -44,15 +49,15 @@ public struct Arguments {
     }
     
     public static Arguments Parse(string[] args) {
-        var subtitle = new Arguments();
+        var arguments = new Arguments();
         bool isTitleSet = false;
         
         for (int i = 0; i < args.Length; i++) {
             string currentArg = args[i];
-            int seasonIndex = StartsWith(currentArg, SEASON_IDENTIFIERS);
+            int seasonIndex = StartsWithIndex(currentArg, SEASON_FLAGS);
             if (seasonIndex != -1) {
-                subtitle.isMovie = false;
-                string key = SEASON_IDENTIFIERS[seasonIndex];
+                arguments.isMovie = false;
+                string key = SEASON_FLAGS[seasonIndex];
                 bool isAdjacent = currentArg.Length > key.Length;
                 
                 uint value;
@@ -60,8 +65,8 @@ public struct Arguments {
                     case true:
                         string numerical = currentArg[key.Length..];
                         if (uint.TryParse(numerical, out value)) {
-                            subtitle.season = value;
-                            subtitle.providedSeason = true;
+                            arguments.season = value;
+                            arguments.providedSeason = true;
                         }
                         else {
                             FailExit("Failed to parse (adjacent) season number!");
@@ -70,8 +75,8 @@ public struct Arguments {
                     case false:
                         bool hasNext = i + 1 < args.Length;
                         if (hasNext && uint.TryParse(args[i + 1], out value)) {
-                            subtitle.season = value;
-                            subtitle.providedSeason = true;
+                            arguments.season = value;
+                            arguments.providedSeason = true;
                             i++;
                         }
                         else {
@@ -82,10 +87,10 @@ public struct Arguments {
                 continue;
             }
             
-            int episodeIndex = StartsWith(currentArg, EPISODE_IDENTIFIERS);
+            int episodeIndex = StartsWithIndex(currentArg, EPISODE_FLAGS);
             if (episodeIndex != -1) {
-                subtitle.isMovie = false;
-                string key = EPISODE_IDENTIFIERS[episodeIndex];
+                arguments.isMovie = false;
+                string key = EPISODE_FLAGS[episodeIndex];
                 bool isAdjacent = currentArg.Length > key.Length;
                 
                 uint value;
@@ -93,8 +98,8 @@ public struct Arguments {
                     case true:
                         string numerical = currentArg[key.Length..];
                         if (uint.TryParse(numerical, out value)) {
-                            subtitle.episode = value;
-                            subtitle.providedEpisode = true;
+                            arguments.episode = value;
+                            arguments.providedEpisode = true;
                         }
                         else {
                             FailExit("Failed to parse (adjacent) episode number!");
@@ -103,8 +108,8 @@ public struct Arguments {
                     case false:
                         bool hasNext = i + 1 < args.Length;
                         if (hasNext && uint.TryParse(args[i + 1], out value)) {
-                            subtitle.episode = value;
-                            subtitle.providedEpisode = true;
+                            arguments.episode = value;
+                            arguments.providedEpisode = true;
                             i++;
                         }
                         else {
@@ -115,9 +120,9 @@ public struct Arguments {
                 continue;
             }
             
-            int yearIndex = StartsWith(currentArg, YEAR_IDENTIFIERS);
+            int yearIndex = StartsWithIndex(currentArg, YEAR_FLAGS);
             if (yearIndex != -1) {
-                string key = YEAR_IDENTIFIERS[yearIndex];
+                string key = YEAR_FLAGS[yearIndex];
                 bool isAdjacent = currentArg.Length > key.Length;
                 
                 uint value;
@@ -125,7 +130,7 @@ public struct Arguments {
                     case true:
                         string numerical = currentArg[key.Length..];
                         if (uint.TryParse(numerical, out value)) {
-                            subtitle.year = value;
+                            arguments.year = value;
                         }
                         else {
                             FailExit("Failed to parse (adjacent) year number!");
@@ -134,7 +139,7 @@ public struct Arguments {
                     case false:
                         bool hasNext = i + 1 < args.Length;
                         if (hasNext && uint.TryParse(args[i + 1], out value)) {
-                            subtitle.year = value;
+                            arguments.year = value;
                             i++;
                         }
                         else {
@@ -145,25 +150,21 @@ public struct Arguments {
                 continue;
             }
             
-            int languageIndex = StartsWith(currentArg, LANGUAGE_IDENTIFIERS);
-            if (languageIndex != -1) {
+            if (EqualsAny(currentArg, LANGUAGE_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
-                if (hasNext) {
-                    subtitle.language = args[i + 1];
-                    i++;
+                if (!hasNext) {
+                    FailExit("The language argument wasn't provided. Help: --lang <language>");
                 }
-                else {
-                    Console.WriteLine("The language argument wasn't provided. Help: --lang <language>");
-                }
+                
+                arguments.language = args[i + 1];
+                i++;
                 continue;
             }
             
-            int extIndex = StartsWith(currentArg, EXTENSION_IDENTIFIERS);
-            if (extIndex != -1) {
+            if (EqualsAny(currentArg, EXTENSION_FILTER_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    Console.WriteLine("No extension provided. Use: --ext <extension>");
-                    break;
+                    FailExit("No extension provided. Usage: --filter <extension>");
                 }
                 string ext = args[i + 1].ToLower();
                 if (ext.Length < 2) {
@@ -179,53 +180,92 @@ public struct Arguments {
                     i++;
                     continue;
                 }
-                subtitle.extension = ext;
+                arguments.extensionFilter = ext;
                 i++;                
                 continue;
             }
 
-            int listIndex = EqualsAny(currentArg, LIST_IDENTIFIERS);
-            if (listIndex != -1) {
-                subtitle.listSeries = true;
+            if (EqualsAny(currentArg, LIST_FLAGS)) {
+                arguments.listSeries = true;
                 continue;
             }
             
-            int skipSelectIndex = EqualsAny(currentArg, SKIP_SELECT_IDENTIFIERS);
-            if (skipSelectIndex != -1) {
-                subtitle.skipSelect = true;
+            if (EqualsAny(currentArg, SKIP_SELECT_FLAGS)) {
+                arguments.skipSelect = true;
                 continue;
             }
 
-            int pathIndex = StartsWith(currentArg, FILE_IDENTIFIERS);
-            if (pathIndex != -1) {
+            if (EqualsAny(currentArg, FROM_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
-                if (hasNext) {
-                    string path = args[i + 1];
-                    i++;
-                    parseFilename(Path.GetFileNameWithoutExtension(path), ref subtitle);
+                if (!hasNext) {
+                    FailExit("A path to file was expected. Help: --from <path>");
                 }
-                else {
-                    Console.WriteLine("A path to file was expected. Help: --path <path>");
-                }
+                
+                string path = args[i + 1];
+                i++;
+                parseFilename(Path.GetFileNameWithoutExtension(path), ref arguments);
                 continue;
             }
-
-            int outIndex = EqualsAny(currentArg, OUTPUT_IDENTIFIERS);
-            if (outIndex != -1) {
+            
+            if (EqualsAny(currentArg, SUBTITLE_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
-                if (hasNext) {
-                    string outputPath = args[i + 1];
+                if (!hasNext) {
+                    FailExit("A path to a subtitle file was expected. Help: --subtitle <path>");
+                }
+                string path = args[i + 1];
+                i++;
+                arguments.subtitlePath = path;
+                continue;
+            }
+            
+            if (EqualsAny(currentArg, SHIFT_FLAGS)) {
+                bool hasNext = i + 1 < args.Length;
+                if (hasNext && int.TryParse(args[i + 1], out int shiftMs)) {
+                    arguments.shift = shiftMs;
                     i++;
-                    subtitle.outputDirectory = outputPath;
                 }
                 else {
-                    Console.WriteLine("An argument was expected. Help: --out <directory_path>");
+                    FailExit("Milliseconds [+/-] were expected as the next argument. Help: --shift <ms>");
                 }
                 continue;
             }
             
-            int helpIndex = StartsWith(currentArg, HELP_IDENTIFIERS);
-            if (helpIndex != -1) {
+            if (EqualsAny(currentArg, CONVERT_FLAGS)) {
+                bool hasNext = i + 1 < args.Length;
+                if (!hasNext) {
+                    FailExit("A path to a subtitle file was expected. Help: --convert-to <extension>");
+                }
+                string ext = args[i + 1].ToLower();
+                if (ext.Length < 2) {
+                    Console.WriteLine("Extension name is too short to match any known subtitle format, skipping!");
+                    i++;
+                    continue;
+                }
+                if (ext.StartsWith('.')) {
+                    ext = ext[1..];
+                }
+                if (!SUBTITLE_FORMATS.Contains(ext)) {
+                    Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
+                    i++;
+                    continue;
+                }
+                i++;
+                arguments.convertToExtension = ext;
+                continue;
+            }
+
+            if (EqualsAny(currentArg, OUTPUT_FLAGS)) {
+                bool hasNext = i + 1 < args.Length;
+                if (!hasNext) {
+                    FailExit("An argument was expected. Help: --out <directory_path>");
+                }
+                string outputPath = args[i + 1];
+                i++;
+                arguments.outputDirectory = outputPath;
+                continue;
+            }
+            
+            if (EqualsAny(currentArg, HELP_FLAGS)) {
                 PrintHelp();
                 Environment.Exit(0);
             }
@@ -235,12 +275,12 @@ public struct Arguments {
                 continue;
             }
             if (!isTitleSet) {
-                subtitle.title = currentArg;
+                arguments.title = currentArg;
                 isTitleSet = true;
             }
         }
 
-        return subtitle;
+        return arguments;
     }
 
     private static void parseFilename(string filename, ref Arguments subtitle) {
@@ -376,8 +416,8 @@ public struct Arguments {
         return true;
     }
     
-    // returns index of the parameter that it starts with, -1 if does not start with any
-    private static int StartsWith(string arg, params string[] parameters) {
+    // returns index of the parameter that the 'arg' starts with, -1 if does not start with any
+    private static int StartsWithIndex(string arg, params string[] parameters) {
         for (var i = 0; i < parameters.Length; i++) {
             if (arg.StartsWith(parameters[i])) {
                 return i;
@@ -385,13 +425,14 @@ public struct Arguments {
         }
         return -1;
     }
-    private static int EqualsAny(string arg, params string[] parameters) {
-        for (var i = 0; i < parameters.Length; i++) {
-            if (arg == parameters[i]) {
-                return i;
+    private static bool EqualsAny(string arg, params string[] parameters) {
+        foreach (var param in parameters) {
+            if (arg == param) {
+                return true;
             }
         }
-        return -1;
+
+        return false;
     }
 
     private static void FailExit(string message) {
@@ -479,25 +520,30 @@ public struct Arguments {
 
     public static void PrintHelp() {
         string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-        Console.WriteLine($"Subtitle downloader (OpenSubtitles) v{Program.VERSION}");
+        Console.WriteLine($"Subtitle downloader-converter (OpenSubtitles) v{Program.VERSION}");
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
         Console.WriteLine($"       {programName} --from [file path] [arguments...]");
+        Console.WriteLine($"       {programName} --subtitle [file path] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine("    -s, -S, --season             Season number of a tv series (season > 0)");
-        Console.WriteLine("    -e, -E, --episode            Episode number of a tv series (episode > 0)");
-        Console.WriteLine("    --lang                       Subtitle language code (3 letters)");
-        Console.WriteLine("    -y, --year                   [OPTIONAL] Year number of a movie or tv series");
-        Console.WriteLine("    -ls, --list                  [OPTIONAL] Pretty print seasons and episodes");
-        Console.WriteLine("    --ext                        [OPTIONAL] Filter subtitles by extension");
-        Console.WriteLine("    --skip-select                [OPTIONAL] Automatically selects subtitle to download");
-        Console.WriteLine("    --from                       Extracts production details from filename");
-        Console.WriteLine("    --out                        Directory to which subtitles should be downloaded");
-        Console.WriteLine("    -h, --help                   Display this information (regardless of flag order)");
+        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of a tv series (season > 0)"));
+        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode number of a tv series (episode > 0)"));
+        Console.WriteLine(formatOption(LANGUAGE_FLAGS, "Subtitle language code (3 letters)"));
+        Console.WriteLine(formatOption(YEAR_FLAGS, "[OPTIONAL] Year number of a movie or tv series"));
+        Console.WriteLine(formatOption(LIST_FLAGS, "[OPTIONAL] Pretty print seasons and episodes"));
+        Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "[OPTIONAL] Filter subtitles by extension"));
+        Console.WriteLine(formatOption(SKIP_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
+        Console.WriteLine(formatOption(FROM_FLAGS, "Extracts production details from filename"));
+        Console.WriteLine(formatOption(SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
+        Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
+        Console.WriteLine(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
+        Console.WriteLine(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
+        Console.WriteLine(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
+        Console.WriteLine("File generated from subtitle conversion its extension updated to match resulting format");
         Console.WriteLine("File name provided with --from should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
@@ -506,10 +552,37 @@ public struct Arguments {
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
         Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
-        Console.WriteLine($"  {programName} \"fast and the furious\"");
+        Console.WriteLine();
+        Console.WriteLine("Subtitle conversion example:");
+        Console.WriteLine($"  {programName} -sub FastAndFurious.srt --shift +5000 --to vtt");
         Console.WriteLine();
     }
-    
+
+    private const int PAD_LENGTH = 32;
+    private static string formatOption(string[] flags, string description) {
+        StringBuilder str = new StringBuilder(100);
+        str.Append("    ");
+        
+        bool first = true;
+        foreach (string flag in flags) {
+            if (first) {
+                str.Append(flag);
+                first = false;
+                continue;
+            }
+            
+            str.Append(", ");
+            str.Append(flag);
+        }
+
+        while (str.Length < PAD_LENGTH) {
+            str.Append(' ');
+        }
+        
+        str.Append(description);
+        return str.ToString();
+    }
+
     public override string ToString() {
         StringBuilder str = new StringBuilder(32);
         str.Append($"{title} ");

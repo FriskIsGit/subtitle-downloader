@@ -1,16 +1,13 @@
-﻿
-using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Text;
+﻿using System.Diagnostics;
 
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.5.4";
+    public const string VERSION = "1.6.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
-            case 1 when args[0].Equals("-h") || args[0].Equals("--help"):
+            case 1 when args[0].Equals("-h") || args[0].Equals("-help") || args[0].Equals("--help"):
                 Arguments.PrintHelp();
                 return;
             case 1 when args[0].Equals("-v") || args[0].StartsWith("--ver"):
@@ -26,7 +23,33 @@ class Program {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
-        
+
+        // n.ext
+        if (arguments.subtitlePath.Length > 0) {
+            // Read subtitle file and parse
+            // Shift if needed
+            // Serialize (unless shift == 0 and the format is the same)
+            var (subtitles, exception) = Converter.parseSRT(arguments.subtitlePath);
+            if (exception != null) {
+                Console.WriteLine("FAILED TO PARSE: " + exception);
+                return;
+            }
+
+            if (arguments.shift != 0) {
+                if (arguments.shift > 0) {
+                    foreach (Subtitle sub in subtitles) {
+                        sub.shiftForwardBy(arguments.shift);
+                    }
+                }
+                else {
+                    foreach (Subtitle sub in subtitles) {
+                        sub.shiftBackwardBy(arguments.shift);
+                    }
+                }
+            }
+            
+            return;
+        }
         var api = new SubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
@@ -53,8 +76,7 @@ class Program {
             Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
             Console.WriteLine($"\"{episode.name}\" S{arguments.season} E{episode.number}");
             if (episode.url.Length == 0) {
-                Console.WriteLine("This episode has no subtitles for given language, try again with --lang all");
-                return;
+                FailExit("This episode has no subtitles for given language, try again with --lang all");
             }
             downloadSubtitle(api, episode.getPageUrl(), arguments, episode.name);
         }
@@ -149,10 +171,7 @@ class Program {
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
         sortSubtitleByDownloads(rows);
-        if (args.skipSelect) {
-            return selectBestSubtitle(rows, args.extension);
-        }
-        return userSelectsSubtitle(rows, args.extension);
+        return args.skipSelect ? selectBestSubtitle(rows, args.extensionFilter) : userSelectsSubtitle(rows, args.extensionFilter);
     }
 
     private static void sortSubtitleByDownloads(List<SubtitleRow> rows) {
@@ -194,8 +213,7 @@ class Program {
                 continue;
             }
 
-            int num;
-            if (!int.TryParse(input, out num)) {
+            if (!int.TryParse(input, out var num)) {
                 Console.WriteLine("Specify a number");
                 continue;
             }
@@ -222,7 +240,7 @@ class Program {
             }
             return subtitle;
         }
-        Console.WriteLine("Defaulted to first subtitle.");
+        Console.WriteLine("WARN: Defaulted to first subtitle.");
         return rows[0];
     }
 
@@ -238,10 +256,7 @@ class Program {
                 return productions[0];
         }
 
-        if (USER_SELECTS_PRODUCTION) {
-            return userSelectsProduction(productions);
-        }
-        return selectBestProduction(productions, arguments);
+        return USER_SELECTS_PRODUCTION ? userSelectsProduction(productions) : selectBestProduction(productions, arguments);
     }
 
     private static Production userSelectsProduction(List<Production> productions) {
