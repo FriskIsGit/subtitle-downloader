@@ -36,11 +36,12 @@ class Program {
         }
         
         // Read subtitle file and parse
-        var (subtitles, exception) = Converter.parseSRT(path);
+        var (subtitles, exception) = Converter.parse(path, extension);
         if (exception != null) {
             FailExit("FAILED TO PARSE: " + exception);
         }
-
+        
+        // Shift if needed
         if (arguments.shiftMs != 0) {
             if (arguments.shiftMs > 0) {
                 foreach (Subtitle sub in subtitles) {
@@ -54,9 +55,7 @@ class Program {
             }
         }
         
-        // Shift if needed
-        // Serialize (unless shift == 0 and the format is the same)
-        
+        Converter.serializeTo(subtitles, path, extension);
         Console.WriteLine("Finished");
     }
 

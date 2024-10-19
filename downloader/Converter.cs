@@ -11,6 +11,61 @@ public class Converter {
        4. A blank line indicating the end of the subtitle.
      */
 
+    public static (List<Subtitle>, Exception?) parse(string path, string extension) {
+        switch (extension) {
+            case "srt":
+                return parseSRT(path);
+            case "vtt":
+                return parseVTT(path);
+        }
+        FailExit("Unsupported extension: " + extension);
+        throw new Exception("UNREACHABLE");
+    }
+
+    private static (List<Subtitle>, Exception) parseVTT(string path) {
+        using FileStream file = File.OpenRead(path);
+        using var reader = new StreamReader(file, Encoding.UTF8, true);
+        
+        var subtitles = new List<Subtitle>(2048);
+        
+        string? vttMarker = reader.ReadLine();
+        if (vttMarker != "WEBVTT") {
+            return (subtitles, new SubtitleException("No VTT marker!"));
+        }
+        string? emptyLine = reader.ReadLine();
+        while (!reader.EndOfStream) {
+            string? timestamps = reader.ReadLine();
+            if (timestamps == null) {
+                return (subtitles, new SubtitleException("Expected timestamps [start --> end]"));
+            }
+            
+            var (start, end, exception) = parseTimestamps(timestamps);
+            if (exception != null) {
+                return (subtitles, exception);
+            }
+            if (start == null || end == null) {
+                throw new SubtitleException("Illegal State: One of the timestamps is null");
+            }
+            
+            var content = new StringBuilder();
+            // Parse subtitle text (may span over one or more lines)
+            while (!reader.EndOfStream) {
+                string? line = reader.ReadLine();
+                if (string.IsNullOrEmpty(line)) {
+                    break;
+                }
+
+                content.Append(line);
+                content.Append('\n');
+            }
+            
+            var sub = new Subtitle(start, end, content.ToString());
+            subtitles.Add(sub);
+        }
+
+        return (subtitles, null);
+    }
+
     public static (List<Subtitle>, Exception?) parseSRT(string path) {
         using FileStream file = File.OpenRead(path);
         using var reader = new StreamReader(file, Encoding.UTF8, true);
@@ -53,6 +108,37 @@ public class Converter {
         }
 
         return (subtitles, null);
+    }
+
+    public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
+        switch (extension) {
+            case "srt":
+                serializeToSRT(subtitles, path);
+                return;
+            case "vtt":
+                serializeToVTT(subtitles, path);
+                return;
+        }
+        FailExit("Unsupported extension: " + extension);
+        throw new Exception("UNREACHABLE");
+    }
+
+    private static void serializeToSRT(List<Subtitle> subtitles, string path) {
+        using FileStream file = File.Create(path);
+        using var writer = new StreamWriter(file, Encoding.UTF8);
+        
+        int counter = 0;
+        
+        foreach (var sub in subtitles) {
+            counter++;
+            byte[] intBytes = BitConverter.GetBytes(counter);
+            Array.Reverse(intBytes);
+            file.Write(intBytes);
+            string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
+            file.Write(Encoding.UTF8.GetBytes(timestamps));
+            file.Write(Encoding.UTF8.GetBytes(sub.content));
+            file.Write("\n\n"u8.ToArray());
+        }
     }
 
     public static void serializeToVTT(List<Subtitle> subtitles, string path) {
@@ -122,6 +208,11 @@ public class Converter {
 
         return (new Timecode(hours, minutes, seconds, milliseconds), null);
     }
+    
+    private static void FailExit(string message) {
+        Console.WriteLine(message);
+        Environment.Exit(1);
+    }
 }
 
 public class Subtitle {
@@ -140,6 +231,7 @@ public class Subtitle {
         end.shiftForwardBy(ms);
     }
     public void shiftBackwardBy(int ms) {
+        Console.WriteLine("Unimplemented");
     }
 }
 

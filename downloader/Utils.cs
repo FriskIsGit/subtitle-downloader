@@ -14,6 +14,11 @@ public class Utils {
                 case ':':
                 case '/':
                 case '\\':
+                case '\t':
+                case '\n':
+                case '\r':
+                case '\b':
+                case '\a':
                 case '"':
                 case '|':
                 case '?':
