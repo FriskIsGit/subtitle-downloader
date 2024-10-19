@@ -54,21 +54,19 @@ public class Converter {
 
         return (subtitles, null);
     }
-    
-    public static Exception? serializeToVTT(List<Subtitle> subtitles, string path) {
+
+    public static void serializeToVTT(List<Subtitle> subtitles, string path) {
         using FileStream file = File.Create(path);
         using var writer = new StreamWriter(file, Encoding.UTF8);
 
         file.Write("WEBVTT\n\n"u8.ToArray());
 
-        foreach(var sub in subtitles) {
-
+        foreach (var sub in subtitles) {
             string timestamps = sub.start.toVtt() + " --> " + sub.end.toVtt() + "\n";
             file.Write(Encoding.UTF8.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
             file.Write("\n\n"u8.ToArray());
         }
-        return null;
     }
     
     private static (Timecode?, Timecode?, Exception?) parseTimestamps(string timestamps) {

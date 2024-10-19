@@ -24,6 +24,9 @@ public struct Arguments {
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
     private const int MAX_EPISODES = 25000;
+    // 12 hour limits
+    private const int BACKWARD_SHIFT_CAP = -12 * 60 * 60 * 1000;
+    private const int FORWARD_SHIFT_CAP = 12 * 60 * 60 * 1000;
 
     public string title = "";
     public string language = "all";
@@ -36,8 +39,12 @@ public struct Arguments {
     public uint episode = 0;
     public uint year = 0;
 
-    public int shift = 0;
+    public int shiftMs = 0;
     
+    public bool subtitleFromFile = false;
+    public bool shift = false;
+    public bool convert = false;
+
     public bool isMovie = true;
     public bool listSeries = false;
     public bool skipSelect = false;
@@ -175,11 +182,6 @@ public struct Arguments {
                 if (ext.StartsWith('.')) {
                     ext = ext[1..];
                 }
-                if (!SUBTITLE_FORMATS.Contains(ext)) {
-                    Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
-                    i++;
-                    continue;
-                }
                 arguments.extensionFilter = ext;
                 i++;                
                 continue;
@@ -214,6 +216,7 @@ public struct Arguments {
                 }
                 string path = args[i + 1];
                 i++;
+                arguments.subtitleFromFile = true;
                 arguments.subtitlePath = path;
                 continue;
             }
@@ -221,7 +224,8 @@ public struct Arguments {
             if (EqualsAny(currentArg, SHIFT_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (hasNext && int.TryParse(args[i + 1], out int shiftMs)) {
-                    arguments.shift = shiftMs;
+                    arguments.shift = true;
+                    arguments.shiftMs = shiftMs;
                     i++;
                 }
                 else {
@@ -244,12 +248,9 @@ public struct Arguments {
                 if (ext.StartsWith('.')) {
                     ext = ext[1..];
                 }
-                if (!SUBTITLE_FORMATS.Contains(ext)) {
-                    Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
-                    i++;
-                    continue;
-                }
+                
                 i++;
+                arguments.convert = true;
                 arguments.convertToExtension = ext;
                 continue;
             }
@@ -406,6 +407,27 @@ public struct Arguments {
                 Console.WriteLine("Episode number is too large!");
                 return false;
             }
+        }
+
+        if (extensionFilter != "" && !SUBTITLE_FORMATS.Contains(extensionFilter)) {
+            Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
+            return false;
+        }
+        
+        if (shift) {
+            if (shiftMs < BACKWARD_SHIFT_CAP) {
+                Console.WriteLine("The shift goes too far back!");
+                return false;
+            }
+            if (shiftMs > FORWARD_SHIFT_CAP) {
+                Console.WriteLine("The shift goes too far forward!");
+                return false;
+            }
+        }
+        
+        if (convert && !SUBTITLE_FORMATS.Contains(convertToExtension)) {
+            Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
+            return false;
         }
 
         if (!Directory.Exists(outputDirectory)) {

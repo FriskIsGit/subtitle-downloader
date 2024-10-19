@@ -23,41 +23,51 @@ class Program {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
-
-        // n.ext
-        if (arguments.subtitlePath.Length > 0) {
-            // Read subtitle file and parse
-            // Shift if needed
-            // Serialize (unless shift == 0 and the format is the same)
-            var (subtitles, exception) = Converter.parseSRT(arguments.subtitlePath);
-            if (exception != null) {
-                Console.WriteLine("FAILED TO PARSE: " + exception);
-                return;
-            }
-
-            if (arguments.shift != 0) {
-                if (arguments.shift > 0) {
-                    foreach (Subtitle sub in subtitles) {
-                        sub.shiftForwardBy(arguments.shift);
-                    }
-                }
-                else {
-                    foreach (Subtitle sub in subtitles) {
-                        sub.shiftBackwardBy(arguments.shift);
-                    }
-                }
-            }
-            
+        
+        string path = arguments.subtitleFromFile ? arguments.subtitlePath : fetchSubtitle(arguments);
+        if (!arguments.shift && !arguments.convert) {
+            Console.WriteLine("Finished!");
             return;
         }
+        string extension = Path.GetExtension(path);
+        if (arguments.shiftMs == 0 && arguments.convertToExtension == extension) {
+            Console.WriteLine("Nothing to do, yet modifications were requested!");
+            return;
+        }
+        
+        // Read subtitle file and parse
+        var (subtitles, exception) = Converter.parseSRT(path);
+        if (exception != null) {
+            FailExit("FAILED TO PARSE: " + exception);
+        }
+
+        if (arguments.shiftMs != 0) {
+            if (arguments.shiftMs > 0) {
+                foreach (Subtitle sub in subtitles) {
+                    sub.shiftForwardBy(arguments.shiftMs);
+                }
+            }
+            else {
+                foreach (Subtitle sub in subtitles) {
+                    sub.shiftBackwardBy(arguments.shiftMs);
+                }
+            }
+        }
+        
+        // Shift if needed
+        // Serialize (unless shift == 0 and the format is the same)
+        
+        Console.WriteLine("Finished");
+    }
+
+    private static string fetchSubtitle(Arguments arguments) {
         var api = new SubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No suggested productions found, falling back to search");
             productions = api.searchProductions(arguments);
             if (productions.Count == 0) {
-                Console.WriteLine("Fallback failed!");
-                return;
+                FailExit("Fallback failed!");
             }
         }
         
@@ -66,22 +76,21 @@ class Program {
         string pageUrl = createSubtitleUrl(arguments.language, prod.id);
 
         if (arguments.isMovie) {
-            downloadSubtitle(api, pageUrl, arguments);
-        } else {
-            string seasonsHtml = api.fetchHtml(pageUrl).content;
-            List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
-            if (arguments.listSeries) {
-                prettyPrint(seasons);
-            }
-            Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
-            Console.WriteLine($"\"{episode.name}\" S{arguments.season} E{episode.number}");
-            if (episode.url.Length == 0) {
-                FailExit("This episode has no subtitles for given language, try again with --lang all");
-            }
-            downloadSubtitle(api, episode.getPageUrl(), arguments, episode.name);
+            return downloadSubtitle(api, pageUrl, arguments);
         }
         
-        Console.WriteLine("Finished");
+        // Series fetching logic
+        string seasonsHtml = api.fetchHtml(pageUrl).content;
+        List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
+        if (arguments.listSeries) {
+            prettyPrint(seasons);
+        }
+        Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
+        Console.WriteLine($"\"{episode.name}\" S{arguments.season} E{episode.number}");
+        if (episode.url.Length == 0) {
+            FailExit("This episode has no subtitles for given language, try again with --lang all");
+        }
+        return downloadSubtitle(api, episode.getPageUrl(), arguments, episode.name);
     }
 
     // Returns the full path to the downloaded subtitle file, if there is more than one - returns the first found
