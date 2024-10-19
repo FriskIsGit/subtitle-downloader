@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.6.0";
+    public const string VERSION = "1.6.0 DEV";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -29,14 +29,14 @@ class Program {
             Console.WriteLine("Finished!");
             return;
         }
-        string ext = Utils.GetExtension(path);
-        if (arguments.shiftMs == 0 && arguments.convertToExtension == ext) {
+        string originalExt = Utils.GetExtension(path);
+        if (arguments.shiftMs == 0 && arguments.convertToExtension == originalExt) {
             Console.WriteLine("Nothing to do, yet modifications were requested!");
             return;
         }
         
         // Read subtitle file and parse
-        var (subtitles, exception) = Converter.parse(path, ext);
+        var (subtitles, exception) = Converter.parse(path, originalExt);
         if (exception != null) {
             FailExit("FAILED TO PARSE: " + exception);
         }
@@ -56,8 +56,10 @@ class Program {
                 }
             }
         }
-        Console.WriteLine("Serializing to " + ext);
-        Converter.serializeTo(subtitles, path, ext);
+
+        string newExtension = arguments.convert ? arguments.convertToExtension : originalExt;
+        Console.WriteLine($"Serializing {subtitles.Count} subtitle chunks to {newExtension}");
+        Converter.serializeTo(subtitles, path, newExtension);
         Console.WriteLine("Finished");
     }
 

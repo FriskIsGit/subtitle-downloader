@@ -41,7 +41,7 @@ public class Converter {
         while (!reader.EndOfStream) {
             string? timestamps = reader.ReadLine();
             if (timestamps == null) {
-                return (subtitles, new SubtitleException("Expected timestamps [start --> end]"));
+                return (subtitles, new SubtitleException("Expected VTT timestamps [start --> end]"));
             }
             
             var (start, end, exception) = parseTimestamps(timestamps);
@@ -79,12 +79,12 @@ public class Converter {
         
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
-            if (string.IsNullOrEmpty(counter)) {
+            if (!int.TryParse(counter, out _)) {
                 break;
             }
             string? timestamps = reader.ReadLine();
             if (timestamps == null) {
-                return (subtitles, new SubtitleException("Expected timestamps [start --> end]"));
+                return (subtitles, new SubtitleException("Expected SRT timestamps [start --> end]"));
             }
             
             var (start, end, exception) = parseTimestamps(timestamps);
@@ -115,12 +115,14 @@ public class Converter {
     }
 
     public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
+        string newName = Path.GetFileNameWithoutExtension(path) + '.' + extension;
+        Console.WriteLine("New name: " + newName);
         switch (extension) {
             case "srt":
-                serializeToSRT(subtitles, path);
+                serializeToSRT(subtitles, newName);
                 return;
             case "vtt":
-                serializeToVTT(subtitles, path);
+                serializeToVTT(subtitles, newName);
                 return;
         }
         FailExit("Unsupported extension: " + extension);
@@ -135,9 +137,9 @@ public class Converter {
         
         foreach (var sub in subtitles) {
             counter++;
-            file.Write(Encoding.UTF8.GetBytes(counter + "\n"));
+            file.Write(Encoding.ASCII.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
-            file.Write(Encoding.UTF8.GetBytes(timestamps));
+            file.Write(Encoding.ASCII.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
             // content already contains a new line
             file.Write("\n"u8.ToArray());
@@ -153,9 +155,9 @@ public class Converter {
 
         foreach (var sub in subtitles) {
             string timestamps = sub.start.toVtt() + " --> " + sub.end.toVtt() + "\n";
-            file.Write(Encoding.UTF8.GetBytes(timestamps));
+            file.Write(Encoding.ASCII.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
-            file.Write("\n\n"u8.ToArray());
+            file.Write("\n"u8.ToArray());
         }
     }
     

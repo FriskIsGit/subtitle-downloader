@@ -576,7 +576,7 @@ public struct Arguments {
         Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
         Console.WriteLine();
         Console.WriteLine("Subtitle conversion example:");
-        Console.WriteLine($"  {programName} -sub FastAndFurious.srt --shift +5000 --to vtt");
+        Console.WriteLine($"  {programName} --subtitle FastAndFurious.srt --shift +5000 --to vtt");
         Console.WriteLine();
     }
 
