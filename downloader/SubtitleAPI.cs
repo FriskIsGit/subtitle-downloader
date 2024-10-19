@@ -126,7 +126,7 @@ public class SubtitleAPI {
         return true;
     }
 
-    public static string downgradeUrl(string url) {
+    private static string downgradeUrl(string url) {
         return url.Replace("https", "http");
     }
 }

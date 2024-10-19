@@ -84,14 +84,14 @@ class Program {
         Console.WriteLine("Finished");
     }
 
-    private static void downloadSubtitle(SubtitleAPI api, string pageURL, Arguments args, string? fileName = null) {
+    // Returns the full path to the downloaded subtitle file, if there is more than one - returns the first found
+    private static string downloadSubtitle(SubtitleAPI api, string pageURL, Arguments args, string? fileName = null) {
         string html = api.fetchHtml(pageURL).content;
         Console.WriteLine($"Scraping: {pageURL}");
 
         List<SubtitleRow> rows = SubtitleScraper.ScrapeSubtitleTable(html);
         if (rows.Count == 0) {
-            Console.WriteLine("No subtitle elements were scraped");
-            return;
+            FailExit("No subtitle elements were scraped");
         }
         SubtitleRow bestSubtitle = selectSubtitle(rows, args);
 
@@ -109,13 +109,18 @@ class Program {
             FailExit(e.Message);
         }
 
-        if (download.Result) {
-            Console.WriteLine("Unzipping..");
-            Utils.unzipFile(downloadedZip, outputDir);
+        if (!download.Result) {
+            FailExit("The download failed!");
+        }
+        
+        Console.WriteLine("Unzipping " + downloadedZip);
+        List<string> extracted = Utils.unzip(downloadedZip, outputDir);
+        if (extracted.Count == 0) {
+            FailExit("THE ZIP IS EMPTY - No elements were extracted from the zip file!");
         }
         Console.WriteLine("Cleaning up..");
         File.Delete(downloadedZip);
-        Utils.cleanupNFOs(outputDir);
+        return extracted[0];
     }
 
     private static void FailExit(string message) {

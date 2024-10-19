@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -36,9 +37,8 @@ public class Utils {
 
         return outputDir;
     }
-
-    // Extract .zip that contains the .srt files
-    public static void unzipFile(string zipPath, string outputDirectory) {
+    
+    public static void unzipFile2(string zipPath, string outputDirectory) {
         try {
             System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, outputDirectory);
         }
@@ -47,14 +47,20 @@ public class Utils {
         }
     }
 
-    public static void cleanupNFOs(string dir) {
-        string[] files = Directory.GetFiles(dir);
-        foreach (var file in files) {
-            if (file.EndsWith(".nfo")) {
-                File.Delete(file);
-                break;
+    // Extract .zip that contains the subtitle files
+    public static List<string> unzip(string zipPath, string outputDirectory) {
+        var extracted = new List<string>();
+        using ZipArchive archive = ZipFile.OpenRead(zipPath);
+        foreach (ZipArchiveEntry entry in archive.Entries) {
+            if (entry.FullName.EndsWith(".nfo")) {
+                continue;
             }
+            string destPath = Path.Combine(outputDirectory, entry.FullName);
+            entry.ExtractToFile(destPath, overwrite: true);
+
+            extracted.Add(destPath);
         }
+        return extracted;
     }
 
     /*
