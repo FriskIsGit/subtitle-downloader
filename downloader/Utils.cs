@@ -33,6 +33,14 @@ public class Utils {
         return str.ToString();
     }
 
+    public static string GetExtension(string path) {
+        string? ext = Path.GetExtension(path);
+        if (ext.StartsWith('.')) {
+            ext = ext[1..];
+        }
+        return ext;
+    }
+
     public static string correctOutputDirectory(string outputDir) {
         bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         // C# does not correctly identify drive path as absolute

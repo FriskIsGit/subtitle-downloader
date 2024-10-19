@@ -29,14 +29,14 @@ class Program {
             Console.WriteLine("Finished!");
             return;
         }
-        string extension = Path.GetExtension(path);
-        if (arguments.shiftMs == 0 && arguments.convertToExtension == extension) {
+        string ext = Utils.GetExtension(path);
+        if (arguments.shiftMs == 0 && arguments.convertToExtension == ext) {
             Console.WriteLine("Nothing to do, yet modifications were requested!");
             return;
         }
         
         // Read subtitle file and parse
-        var (subtitles, exception) = Converter.parse(path, extension);
+        var (subtitles, exception) = Converter.parse(path, ext);
         if (exception != null) {
             FailExit("FAILED TO PARSE: " + exception);
         }
@@ -44,18 +44,20 @@ class Program {
         // Shift if needed
         if (arguments.shiftMs != 0) {
             if (arguments.shiftMs > 0) {
+                Console.WriteLine("Shifting forward by " + arguments.shiftMs + "ms");
                 foreach (Subtitle sub in subtitles) {
                     sub.shiftForwardBy(arguments.shiftMs);
                 }
             }
             else {
                 foreach (Subtitle sub in subtitles) {
+                    Console.WriteLine("Shifting backward by " + arguments.shiftMs + "ms");
                     sub.shiftBackwardBy(arguments.shiftMs);
                 }
             }
         }
-        
-        Converter.serializeTo(subtitles, path, extension);
+        Console.WriteLine("Serializing to " + ext);
+        Converter.serializeTo(subtitles, path, ext);
         Console.WriteLine("Finished");
     }
 

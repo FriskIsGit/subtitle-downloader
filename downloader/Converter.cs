@@ -22,7 +22,8 @@ public class Converter {
         throw new Exception("UNREACHABLE");
     }
 
-    private static (List<Subtitle>, Exception) parseVTT(string path) {
+    private static (List<Subtitle>, Exception?) parseVTT(string path) {
+        Console.WriteLine("UNFINISHED");
         using FileStream file = File.OpenRead(path);
         using var reader = new StreamReader(file, Encoding.UTF8, true);
         
@@ -74,8 +75,7 @@ public class Converter {
         
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
-            if (counter == null) {
-                // expecting to quit here
+            if (string.IsNullOrEmpty(counter)) {
                 break;
             }
             string? timestamps = reader.ReadLine();
@@ -131,14 +131,13 @@ public class Converter {
         
         foreach (var sub in subtitles) {
             counter++;
-            byte[] intBytes = BitConverter.GetBytes(counter);
-            Array.Reverse(intBytes);
-            file.Write(intBytes);
+            file.Write(Encoding.UTF8.GetBytes(counter.ToString()));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
             file.Write(Encoding.UTF8.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
             file.Write("\n\n"u8.ToArray());
         }
+        file.Flush();
     }
 
     public static void serializeToVTT(List<Subtitle> subtitles, string path) {
@@ -159,7 +158,7 @@ public class Converter {
         if (timestamps.Length < 29) {
             return (null, null, new SubtitleException("The timestamps are not full"));
         }
-
+        
         if (!timestamps.Contains("-->", StringComparison.Ordinal)) {
             return (null, null, new SubtitleException("No timecode separator found"));
         }
@@ -180,7 +179,7 @@ public class Converter {
     }
     
     private static (Timecode?, SubtitleException?) fromSrtTimestamp(string timestamp) {
-        string[] split = timestamp.Split(":");
+        string[] split = timestamp.Split(':');
         if (split.Length != 3) {
             return (null, new SubtitleException("Invalid timestamp, not a triple split"));
         }
@@ -193,7 +192,7 @@ public class Converter {
             return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
         }
         
-        string[] subSplit = split[2].Split(",");
+        string[] subSplit = split[2].Split(',');
         if (subSplit.Length != 2) {
             return (null, new SubtitleException("Invalid sub stamp, not a double split"));
         }
@@ -208,6 +207,39 @@ public class Converter {
 
         return (new Timecode(hours, minutes, seconds, milliseconds), null);
     }
+    
+    /*private static (Timecode?, SubtitleException?) fromVTTTimestamp(string timestamp) {
+        string[] split = timestamp.Split(':');
+        switch (split.Length) {
+            case 2:
+                if (!int.TryParse(split[0], out int minutes)) {
+                    return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
+                }
+                if (!int.TryParse(split[0], out int seconds)) {
+                    return (null, new SubtitleException("Invalid timestamp, failed to parse seconds"));
+                }
+                break;
+        }
+
+        if (!int.TryParse(split[0], out int hours)) {
+            return (null, new SubtitleException("Invalid timestamp, failed to parse hours"));
+        }
+
+        
+        
+        string[] subSplit = split[2].Split(',');
+        if (subSplit.Length != 2) {
+            return (null, new SubtitleException("Invalid sub stamp, not a double split"));
+        }
+        
+        
+        
+        if (!int.TryParse(subSplit[1], out int milliseconds)) {
+            return (null, new SubtitleException("Invalid timestamp, failed to parse milliseconds"));
+        }
+
+        return (new Timecode(hours, minutes, seconds, milliseconds), null);
+    }*/
     
     private static void FailExit(string message) {
         Console.WriteLine(message);

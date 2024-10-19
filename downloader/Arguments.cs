@@ -11,7 +11,7 @@ public struct Arguments {
     private static readonly string[] LIST_FLAGS = {"-ls", "--list"};
     private static readonly string[] SKIP_SELECT_FLAGS = {"--skip-select"};
     private static readonly string[] FROM_FLAGS = {"--from"};
-    private static readonly string[] SUBTITLE_FLAGS = {"-sub", "--subtitle"};
+    private static readonly string[] SUBTITLE_FLAGS = {"--subtitle"};
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = {"--dest", "--out"};
@@ -41,6 +41,7 @@ public struct Arguments {
 
     public int shiftMs = 0;
     
+    public bool nameFromFile = false;
     public bool subtitleFromFile = false;
     public bool shift = false;
     public bool convert = false;
@@ -202,7 +203,8 @@ public struct Arguments {
                 if (!hasNext) {
                     FailExit("A path to file was expected. Help: --from <path>");
                 }
-                
+
+                arguments.nameFromFile = true;
                 string path = args[i + 1];
                 i++;
                 parseFilename(Path.GetFileNameWithoutExtension(path), ref arguments);
@@ -380,7 +382,7 @@ public struct Arguments {
     }
 
     public bool Validate() {
-        if (title.Length == 0) {
+        if (title.Length == 0 && !subtitleFromFile) {
             Console.WriteLine("The title cannot be empty");
             return false;
         }
