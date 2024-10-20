@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.6.0 DEV";
+    public const string VERSION = "1.6.0";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -43,17 +43,9 @@ class Program {
         
         // Shift if needed
         if (arguments.shiftMs != 0) {
-            if (arguments.shiftMs > 0) {
-                Console.WriteLine("Shifting forward by " + arguments.shiftMs + "ms");
-                foreach (Subtitle sub in subtitles) {
-                    sub.shiftForwardBy(arguments.shiftMs);
-                }
-            }
-            else {
-                foreach (Subtitle sub in subtitles) {
-                    Console.WriteLine("Shifting backward by " + arguments.shiftMs + "ms");
-                    sub.shiftBackwardBy(arguments.shiftMs);
-                }
+            Console.WriteLine("Shifting by " + arguments.shiftMs + "ms");
+            foreach (Subtitle sub in subtitles) {
+                sub.shiftBy(arguments.shiftMs);
             }
         }
 

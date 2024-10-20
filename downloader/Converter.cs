@@ -136,6 +136,14 @@ public class Converter {
         int counter = 0;
         
         foreach (var sub in subtitles) {
+            // could have been shifted to negative values
+            if (sub.start.isNegative()) {
+                if (sub.end.isNegative()) {
+                    continue;
+                }
+                // it's possible to preserve the subtitle because the end is not negative
+                sub.start = Timecode.ZERO_CODE;
+            }
             counter++;
             file.Write(Encoding.ASCII.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
@@ -154,6 +162,13 @@ public class Converter {
         file.Write("WEBVTT\n\n"u8.ToArray());
 
         foreach (var sub in subtitles) {
+            // could have been shifted to negative values
+            if (sub.start.isNegative()) {
+                if (sub.end.isNegative()) {
+                    continue;
+                }
+                sub.start = Timecode.ZERO_CODE;
+            }
             string timestamps = sub.start.toVtt() + " --> " + sub.end.toVtt() + "\n";
             file.Write(Encoding.ASCII.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
@@ -299,16 +314,20 @@ public class Subtitle {
         return builder.ToString();
     }
 
-    public void shiftForwardBy(int ms) { 
-        start.shiftForwardBy(ms);
-        end.shiftForwardBy(ms);
-    }
-    public void shiftBackwardBy(int ms) {
-        Console.WriteLine("Unimplemented");
+    public void shiftBy(int ms) {
+        if (ms > 0) {
+            start.shiftForwardBy(ms);
+            end.shiftForwardBy(ms);
+        } else {
+            ms = Math.Abs(ms);
+            start.shiftBackBy(ms);
+            end.shiftBackBy(ms);
+        }
     }
 }
 
 public class Timecode {
+    public static readonly Timecode ZERO_CODE = new (0, 0, 0, 0);
     public int hours, minutes, seconds, milliseconds;
 
     public Timecode(int hr, int min, int s, int ms) {
@@ -318,6 +337,9 @@ public class Timecode {
         milliseconds = ms;
     }
 
+    public bool isNegative() {
+        return hours < 0 || minutes < 0 || seconds < 0 || milliseconds < 0;
+    }
     public string toSrt() {
         return formatUnit(hours, 2) + ":" +
                formatUnit(minutes, 2) + ":" +
@@ -353,6 +375,42 @@ public class Timecode {
         }
         hours += additionalHours;
         // cannot mod hours because it cannot be carried over to a higher unit
+    }
+    
+    // expecting a positive ms value
+    public void shiftBackBy(int ms) {
+        milliseconds -= ms;
+
+        int secondsOffset = milliseconds / 1000;
+        if (milliseconds < 0) {
+            milliseconds %= 1000;
+            if (milliseconds < 0) {
+                milliseconds += 1000;
+                secondsOffset -= 1;
+            }
+        }
+        seconds += secondsOffset;
+
+        int minutesOffset = seconds / 60;
+        if (seconds < 0) {
+            seconds %= 60;
+            if (seconds < 0) {
+                seconds += 60;
+                minutesOffset -= 1;
+            }
+        }
+        minutes += minutesOffset;
+
+        int hourOffset = minutes / 60;
+        if (minutes < 0) {
+            minutes %= 60;
+            if (minutes < 0) {
+                minutes += 60;
+                hourOffset -= 1;
+            }
+        }
+        hours += hourOffset;
+        // negative hours are invalid and won't be serialized
     }
     
     private static string formatUnit(int value, int length) {
