@@ -38,7 +38,7 @@ class Program {
         // Read subtitle file and parse
         var (subtitles, exception) = Converter.parse(path, originalExt);
         if (exception != null) {
-            FailExit("FAILED TO PARSE: " + exception);
+            FailExit("PARSING FAILURE: " + exception.Message);
         }
         
         // Shift if needed

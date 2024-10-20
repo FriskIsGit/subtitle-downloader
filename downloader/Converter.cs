@@ -115,7 +115,7 @@ public class Converter {
     }
 
     public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
-        string newName = Path.GetFileNameWithoutExtension(path) + '.' + extension;
+        string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + extension;
         Console.WriteLine("New name: " + newName);
         switch (extension) {
             case "srt":
@@ -140,7 +140,7 @@ public class Converter {
             file.Write(Encoding.ASCII.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
             file.Write(Encoding.ASCII.GetBytes(timestamps));
-            file.Write(Encoding.UTF8.GetBytes(sub.content));
+            file.Write(Encoding.UTF8.GetBytes(sub.contentNoStyling()));
             // content already contains a new line
             file.Write("\n"u8.ToArray());
         }
@@ -164,12 +164,12 @@ public class Converter {
     private static (Timecode?, Timecode?, Exception?) parseTimestamps(string timestamps, bool srt) {
         if (timestamps.Length < 23) {
             // minimal VTT timestamps length "01:11.111 --> 01:22.222".Length
-            return (null, null, new SubtitleException("The timestamps are too short"));
+            return (null, null, new SubtitleException("The timestamps are too short: " + timestamps));
         }
 
         int separator = timestamps.IndexOf(" --> ", StringComparison.Ordinal);
         if (separator == -1) {
-            return (null, null, new SubtitleException("No timecode separator found"));
+            return (null, null, new SubtitleException("No timecode separator found: " + timestamps));
         }
 
         string startStamp = timestamps[..separator];
@@ -272,6 +272,31 @@ public class Subtitle {
         this.start = start;
         this.end = end;
         this.content = content;
+    }
+
+    // Styling examples: <b> <i> <u> <c> <v> <ruby> <rt>
+    public string contentNoStyling() {
+        var builder = new StringBuilder();
+        for (var i = 0; i < content.Length; i++) {
+            var chr = content[i];
+            switch (chr) {
+                case '<':
+                    int closingSign = content.IndexOf('>', i + 1);
+                    if (closingSign == -1) {
+                        // this shouldn't happen but it's a sign that it could be part of text
+                        builder.Append(chr);
+                        break;
+                    }
+
+                    i = closingSign;
+                    break;
+                default:
+                    builder.Append(chr);
+                    break;
+            }
+        }
+
+        return builder.ToString();
     }
 
     public void shiftForwardBy(int ms) { 
