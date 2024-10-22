@@ -565,7 +565,7 @@ public struct Arguments {
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be concatenated with a number (e.g. -S2)");
-        Console.WriteLine("File generated from subtitle conversion its extension updated to match resulting format");
+        Console.WriteLine("Files converted will have its name updated to match the resulting format");
         Console.WriteLine("File name provided with --from should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
