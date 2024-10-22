@@ -51,20 +51,9 @@ public class Converter {
             if (start == null || end == null) {
                 throw new SubtitleException("Illegal State: One of the timestamps is null");
             }
-            
-            var content = new StringBuilder();
-            // Parse subtitle text (may span over one or more lines)
-            while (!reader.EndOfStream) {
-                string? line = reader.ReadLine();
-                if (string.IsNullOrEmpty(line)) {
-                    break;
-                }
 
-                content.Append(line);
-                content.Append('\n');
-            }
-            
-            var sub = new Subtitle(start, end, content.ToString());
+            string content = parseSubtitleContent(reader);
+            var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
 
@@ -94,26 +83,37 @@ public class Converter {
             if (start == null || end == null) {
                 throw new SubtitleException("Illegal State: One of the timestamps is null");
             }
-            
-            var content = new StringBuilder();
-            // Parse subtitle text (may span over one or more lines)
-            while (!reader.EndOfStream) {
-                string? line = reader.ReadLine();
-                if (string.IsNullOrEmpty(line)) {
-                    break;
-                }
 
-                content.Append(line);
-                content.Append('\n');
-            }
-            
-            var sub = new Subtitle(start, end, content.ToString());
+            string content = parseSubtitleContent(reader);
+            var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
 
         return (subtitles, null);
     }
 
+    private static string parseSubtitleContent(StreamReader reader) {
+        var content = new StringBuilder();
+        // Parse subtitle text (may span over one or more lines). Nonetheless empty subs may mistakenly appear in some files.
+        string? firstContentLine = reader.ReadLine();
+        if (!string.IsNullOrEmpty(firstContentLine)) {
+            // This will not hurt but will enable parsing files that don't stick to the specification
+            content.Append(firstContentLine);
+        }
+            
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (string.IsNullOrEmpty(line)) {
+                break;
+            }
+
+            content.Append(line);
+            content.Append('\n');
+        }
+
+        return content.ToString();
+    }
+    
     public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
         string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + extension;
         Console.WriteLine("New name: " + newName);
