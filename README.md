@@ -23,21 +23,21 @@
 Fetching movie subtitles
 
 ```bash
-`./subtitles "Pulp Fiction" --lang eng
+./subtitles "Pulp Fiction" --lang eng
 ```
 
 ```bash
-`./subtitles Godfather -y1972 --lang spanish`
+./subtitles Godfather -y1972 --lang spanish
 ```
 
 Fetching TV series subtitles
 ```bash
-`./subtitles "The Gentlemen" -S1 -E3` --lang chinese
+./subtitles "The Gentlemen" -S1 -E3 --lang chinese
 ```
 
 Converting a file from disk
 ```bash
-`./subtitles --subtitle "Starship Troopers (1997).vtt" --to srt --shift +4500
+./subtitles --subtitle "Starship Troopers (1997).vtt" --to srt --shift +4500
 ```
 
 ### Building the project
