@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace subtitle_downloader.downloader; 
+namespace subtitle_downloader.downloader;
 
 public class Converter {
     /*
@@ -16,22 +16,72 @@ public class Converter {
             FailExit("Subtitle file does not exist! Ensure the path is correct.");
         }
 
-        switch (extension) {
-            case "srt":
-                return parseSRT(path);
-            case "vtt":
-                return parseVTT(path);
-        }
-        FailExit("Unsupported extension: " + extension);
-        throw new Exception("UNREACHABLE");
-    }
-
-    private static (List<Subtitle>, Exception?) parseVTT(string path) {
         using FileStream file = File.OpenRead(path);
         using var reader = new StreamReader(file, Encoding.UTF8, true);
-        
+
+        // This loop exists so that in case the format needs to be detected the switch statement will be reused
+        while (true) {
+            switch (extension) {
+                case "srt":
+                    return parseSRT(reader);
+                case "vtt":
+                    return parseVTT(reader);
+                case "txt":
+                case "sub":
+                    string? detectedExt = detectSubtitleFormat(reader);
+                    if (detectedExt == null) {
+                        FailExit("Unable to detect extension, append the extension to file");
+                        break;
+                    }
+                    extension = detectedExt;
+                    continue;
+                // MPL (MicroDVD): [1][2] Lorem ipsum
+                case "mpl":
+                    FailExit("Unimplemented " + extension);
+                    break;
+                // MPL2 (Enhanced MicroDVD): {1}{2}{y:i} Lorem ipsum
+                case "mpl2":
+                    FailExit("Unimplemented " + extension);
+                    break;
+            }
+
+            FailExit("Unsupported extension: " + extension);
+            throw new Exception("UNREACHABLE");
+        }
+    }
+
+    private static string? detectSubtitleFormat(StreamReader reader) {
+        string? firstLine = reader.ReadLine();
+        reader.DiscardBufferedData();
+        if (firstLine == null) {
+            return null;
+        }
+
+        if (firstLine.Length == 1 && firstLine[0] == '1') {
+            return "srt";
+        }
+
+        if (firstLine.Length == 6 && firstLine == "WEBVTT") {
+            return "vtt";
+        }
+
+        if (firstLine.Length < 6) {
+            return null;
+        }
+
+        if (firstLine[0] == '[' && firstLine.Contains(']')) {
+            return "mpl";
+        }
+
+        if (firstLine[0] == '{' && firstLine.Contains('}')) {
+            return "mpl2";
+        }
+        return null;
+    }
+
+    private static (List<Subtitle>, Exception?) parseVTT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
-        
+
         string? vttMarker = reader.ReadLine();
         if (vttMarker != "WEBVTT") {
             return (subtitles, new SubtitleException("No VTT marker, aborting!"));
@@ -43,7 +93,7 @@ public class Converter {
                 // since there's no marker for subtitle chunks we must quit on timestamps
                 return (subtitles, null);
             }
-            
+
             var (start, end, exception) = parseTimestamps(timestamps, false);
             if (exception != null) {
                 return (subtitles, exception);
@@ -60,12 +110,9 @@ public class Converter {
         return (subtitles, null);
     }
 
-    public static (List<Subtitle>, Exception?) parseSRT(string path) {
-        using FileStream file = File.OpenRead(path);
-        using var reader = new StreamReader(file, Encoding.UTF8, true);
-        
+    public static (List<Subtitle>, Exception?) parseSRT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
-        
+
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
             if (!int.TryParse(counter, out _)) {
@@ -75,7 +122,7 @@ public class Converter {
             if (timestamps == null) {
                 return (subtitles, new SubtitleException("Expected SRT timestamps [start --> end]"));
             }
-            
+
             var (start, end, exception) = parseTimestamps(timestamps, true);
             if (exception != null) {
                 return (subtitles, exception);
@@ -99,21 +146,21 @@ public class Converter {
         if (!string.IsNullOrEmpty(firstContentLine)) {
             // This will not hurt but will enable parsing files that don't stick to the specification
             content.Append(firstContentLine);
+            content.Append('\n');
         }
-            
+
         while (!reader.EndOfStream) {
             string? line = reader.ReadLine();
             if (string.IsNullOrEmpty(line)) {
                 break;
             }
-
             content.Append(line);
             content.Append('\n');
         }
 
         return content.ToString();
     }
-    
+
     public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
         string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + extension;
         Console.WriteLine("New name: " + newName);
@@ -132,9 +179,9 @@ public class Converter {
     private static void serializeToSRT(List<Subtitle> subtitles, string path) {
         using FileStream file = File.Create(path);
         using var writer = new StreamWriter(file, Encoding.UTF8);
-        
+
         int counter = 0;
-        
+
         foreach (var sub in subtitles) {
             // could have been shifted to negative values
             if (sub.start.isNegative()) {
@@ -175,7 +222,7 @@ public class Converter {
             file.Write("\n"u8.ToArray());
         }
     }
-    
+
     private static (Timecode?, Timecode?, Exception?) parseTimestamps(string timestamps, bool srt) {
         if (timestamps.Length < 23) {
             // minimal VTT timestamps length "01:11.111 --> 01:22.222".Length
@@ -201,7 +248,7 @@ public class Converter {
 
         return (start, end, null);
     }
-    
+
     private static (Timecode?, SubtitleException?) fromSrtTimestamp(string timestamp) {
         string[] split = timestamp.Split(':');
         if (split.Length != 3) {
@@ -215,23 +262,23 @@ public class Converter {
         if (!int.TryParse(split[1], out int minutes)) {
             return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
         }
-        
+
         string[] subSplit = split[2].Split(',');
         if (subSplit.Length != 2) {
             return (null, new SubtitleException("Invalid sub stamp, not a double split"));
         }
-        
+
         if (!int.TryParse(subSplit[0], out int seconds)) {
             return (null, new SubtitleException("Invalid timestamp, failed to parse seconds"));
         }
-        
+
         if (!int.TryParse(subSplit[1], out int milliseconds)) {
             return (null, new SubtitleException("Invalid timestamp, failed to parse milliseconds"));
         }
 
         return (new Timecode(hours, minutes, seconds, milliseconds), null);
     }
-    
+
     // Timecode hours are optional
     private static (Timecode?, SubtitleException?) fromVTTTimestamp(string timestamp) {
         int dot = timestamp.IndexOf('.');
@@ -241,7 +288,7 @@ public class Converter {
         if (!int.TryParse(timestamp[(dot+1)..], out int milliseconds)) {
             return (null, new SubtitleException("Invalid timestamp, failed to parse milliseconds"));
         }
-        
+
         string baseStamp = timestamp[..dot];
         string[] split = baseStamp.Split(':');
 
@@ -271,7 +318,7 @@ public class Converter {
         }
         return (null, new SubtitleException("Invalid timestamp, expected either a 2-split or a 3-split"));
     }
-    
+
     private static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);
@@ -282,7 +329,7 @@ public class Subtitle {
     public Timecode start;
     public Timecode end;
     public string content;
-    
+
     public Subtitle(Timecode start, Timecode end, string content) {
         this.start = start;
         this.end = end;
@@ -353,7 +400,7 @@ public class Timecode {
                + formatUnit(seconds, 2) + "."
                + formatUnit(milliseconds, 3);
     }
-    
+
     public void shiftForwardBy(int ms) {
         milliseconds += ms;
 
@@ -376,7 +423,7 @@ public class Timecode {
         hours += additionalHours;
         // cannot mod hours because it cannot be carried over to a higher unit
     }
-    
+
     // expecting a positive ms value
     public void shiftBackBy(int ms) {
         milliseconds -= ms;
@@ -412,7 +459,7 @@ public class Timecode {
         hours += hourOffset;
         // negative hours are invalid and won't be serialized
     }
-    
+
     private static string formatUnit(int value, int length) {
         var format = new StringBuilder();
         string stringedValue = value.ToString();
