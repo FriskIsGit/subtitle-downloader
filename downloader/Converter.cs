@@ -69,7 +69,7 @@ public class Converter {
             return null;
         }
 
-        if (firstLine[0] == '[' && firstLine.Contains(']')) {
+        if (hasMPLStructure(firstLine)) {
             return "mpl";
         }
 
@@ -79,6 +79,22 @@ public class Converter {
         return null;
     }
 
+    private static bool hasMPLStructure(string line) {
+        if (line[0] != '[') {
+            return false;
+        }
+
+        int separator = line.IndexOf("][", StringComparison.Ordinal);
+        if (separator == -1) {
+            return false;
+        }
+
+        int whitespace = line.IndexOf(' ', separator + 2);
+        string startFrame = line[1..separator];
+        string endFrame = line[(separator+2)..whitespace];
+        return int.TryParse(startFrame, out var n1) && int.TryParse(endFrame, out var n2);
+    }
+    
     private static (List<Subtitle>, Exception?) parseVTT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
 
@@ -107,6 +123,13 @@ public class Converter {
             subtitles.Add(sub);
         }
 
+        return (subtitles, null);
+    }
+
+
+    public static (List<Subtitle>, Exception?) parseMPL(StreamReader reader) {
+        var subtitles = new List<Subtitle>(2048);
+        
         return (subtitles, null);
     }
 
