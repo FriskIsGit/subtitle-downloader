@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.6.1";
+    public const string VERSION = "1.6.2";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -29,29 +29,31 @@ class Program {
             Console.WriteLine("Finished!");
             return;
         }
-        string originalExt = Utils.GetExtension(path);
-        if (arguments.shiftMs == 0 && arguments.convertToExtension == originalExt) {
+        string originalExtension = Utils.GetExtension(path);
+        if (arguments.shiftMs == 0 && arguments.convertToExtension == originalExtension) {
             Console.WriteLine("Nothing to do, yet modifications were requested!");
             return;
         }
         
         // Read subtitle file and parse
-        var (subtitles, exception) = Converter.parse(path, originalExt);
+        var (subtitleFile, exception) = Converter.parse(path, originalExtension);
         if (exception != null) {
-            FailExit("PARSING FAILURE: " + exception.Message);
+            Console.WriteLine("PARSING FAILURE: " + exception.Message);
+            if (subtitleFile.count() == 0) {
+                Environment.Exit(1);
+            }
+            // Continue if some subtitles were parsed before failure
         }
         
         // Shift if needed
         if (arguments.shiftMs != 0) {
             Console.WriteLine("Shifting by " + arguments.shiftMs + "ms");
-            foreach (Subtitle sub in subtitles) {
-                sub.shiftBy(arguments.shiftMs);
-            }
+            subtitleFile.shiftBy(arguments.shiftMs);
         }
 
-        string newExtension = arguments.convert ? arguments.convertToExtension : originalExt;
-        Console.WriteLine($"Serializing {subtitles.Count} subtitle chunks to {newExtension}");
-        Converter.serializeTo(subtitles, path, newExtension);
+        string newExtension = arguments.convert ? arguments.convertToExtension : originalExtension;
+        Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
+        Converter.serialize(subtitleFile, path,  newExtension);
         Console.WriteLine("Finished");
     }
 

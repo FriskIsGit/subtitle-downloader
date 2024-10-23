@@ -46,3 +46,7 @@ Run in project's root directory
 dotnet run
 ```
 
+### Supported conversions
+_Parsing_: SRT, VTT, MPL, MPL2, SUB, TXT
+
+_Serializing to_: SRT, VTT

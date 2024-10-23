@@ -11,7 +11,7 @@ public class Converter {
        4. A blank line indicating the end of the subtitle.
      */
 
-    public static (List<Subtitle>, Exception?) parse(string path, string extension) {
+    public static (SubtitleFile, Exception?) parse(string path, string extension) {
         if (!File.Exists(path)) {
             FailExit("Subtitle file does not exist! Ensure the path is correct.");
         }
@@ -37,12 +37,10 @@ public class Converter {
                     continue;
                 // MPL (MicroDVD): [1][2] Lorem ipsum
                 case "mpl":
-                    FailExit("Unimplemented " + extension);
-                    break;
+                    return parseMPL(reader);
                 // MPL2 (Enhanced MicroDVD): {1}{2}{y:i} Lorem ipsum
                 case "mpl2":
-                    FailExit("Unimplemented " + extension);
-                    break;
+                    return parseMPL2(reader);
             }
 
             FailExit("Unsupported extension: " + extension);
@@ -53,6 +51,8 @@ public class Converter {
     private static string? detectSubtitleFormat(StreamReader reader) {
         string? firstLine = reader.ReadLine();
         reader.DiscardBufferedData();
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+
         if (firstLine == null) {
             return null;
         }
@@ -108,27 +108,30 @@ public class Converter {
         int timestampsEnd = line.IndexOf(closingBracket, separator + 3);    
         string startFrame = line[1..separator];
         string endFrame = line[(separator+2)..timestampsEnd];
-        return int.TryParse(startFrame, out var n1) && int.TryParse(endFrame, out var n2);
+        return int.TryParse(startFrame, out _) && int.TryParse(endFrame, out _);
     }
     
-    private static (List<Subtitle>, Exception?) parseVTT(StreamReader reader) {
+    private static (SubtitleFile, Exception?) parseVTT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
 
         string? vttMarker = reader.ReadLine();
         if (vttMarker != "WEBVTT") {
-            return (subtitles, new SubtitleException("No VTT marker, aborting!"));
+            var file = new SubtitleFile("vtt", subtitles);
+            return (file, new SubtitleException("No VTT marker, aborting!"));
         }
         string? emptyLine = reader.ReadLine();
         while (!reader.EndOfStream) {
             string? timestamps = reader.ReadLine();
             if (string.IsNullOrWhiteSpace(timestamps) || timestamps.Length == 1) {
                 // since there's no marker for subtitle chunks we must quit on timestamps
-                return (subtitles, null);
+                var file = new SubtitleFile("vtt", subtitles);
+                return (file, null);
             }
 
             var (start, end, exception) = parseTimestamps(timestamps, false);
             if (exception != null) {
-                return (subtitles, exception);
+                var file = new SubtitleFile("vtt", subtitles);
+                return (file, exception);
             }
             if (start == null || end == null) {
                 throw new SubtitleException("Illegal State: One of the timestamps is null");
@@ -139,17 +142,80 @@ public class Converter {
             subtitles.Add(sub);
         }
 
-        return (subtitles, null);
+        return (new SubtitleFile("vtt", subtitles), null);
     }
 
 
-    public static (List<Subtitle>, Exception?) parseMPL(StreamReader reader) {
+    public static (SubtitleFile, Exception?) parseMPL(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
-        
-        return (subtitles, null);
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (string.IsNullOrEmpty(line)) {
+                break;
+            }
+            int separator = line.IndexOf("][", StringComparison.Ordinal);
+            if (separator == -1) {
+                FailExit("Invalid MPL timestamp - missing ][ in line: " + line);
+            }
+
+            int timestampsEnd = line.IndexOf(']', separator + 3);    
+            string startFrameText = line[1..separator];
+            string endFrameText = line[(separator+2)..timestampsEnd];
+            
+            int endFrame = 0;
+            bool framesOk = int.TryParse(startFrameText, out var startFrame) &&
+                            int.TryParse(endFrameText, out endFrame);
+            if (!framesOk) {
+                FailExit("Failed to parse frames in line: " + line);
+            }
+
+            string content = line[(timestampsEnd+1)..];
+            var start = Timecode.fromFrames(startFrame, FPS);
+            var end = Timecode.fromFrames(endFrame, FPS);
+            var sub = new Subtitle(start, end, content);
+            subtitles.Add(sub);
+        }
+
+        var subtitleFile = new SubtitleFile("mpl", subtitles);
+        return (subtitleFile, null);
+    }
+    
+    public static int FPS = 25;
+    public static (SubtitleFile, Exception?) parseMPL2(StreamReader reader) {
+        var subtitles = new List<Subtitle>(2048);
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (string.IsNullOrEmpty(line)) {
+                break;
+            }
+            int separator = line.IndexOf("}{", StringComparison.Ordinal);
+            if (separator == -1) {
+                FailExit("Invalid MPL2 timestamp! Expected: }{");
+            }
+
+            int timestampsEnd = line.IndexOf('}', separator + 3);    
+            string startFrameText = line[1..separator];
+            string endFrameText = line[(separator+2)..timestampsEnd];
+            
+            int endFrame = 0;
+            bool framesOk = int.TryParse(startFrameText, out var startFrame) &&
+                            int.TryParse(endFrameText, out endFrame);
+            if (!framesOk) {
+                FailExit("Failed to parse frames in line: " + line);
+            }
+
+            string content = line[(timestampsEnd+1)..];
+            var start = Timecode.fromFrames(startFrame, FPS);
+            var end = Timecode.fromFrames(endFrame, FPS);
+            var sub = new Subtitle(start, end, content);
+            subtitles.Add(sub);
+        }
+
+        var subtitleFile = new SubtitleFile("mpl2", subtitles);
+        return (subtitleFile, null);
     }
 
-    public static (List<Subtitle>, Exception?) parseSRT(StreamReader reader) {
+    public static (SubtitleFile, Exception?) parseSRT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
 
         while (!reader.EndOfStream) {
@@ -159,12 +225,14 @@ public class Converter {
             }
             string? timestamps = reader.ReadLine();
             if (timestamps == null) {
-                return (subtitles, new SubtitleException("Expected SRT timestamps [start --> end]"));
+                var file = new SubtitleFile("srt", subtitles);
+                return (file, new SubtitleException("Expected SRT timestamps [start --> end]"));
             }
 
             var (start, end, exception) = parseTimestamps(timestamps, true);
             if (exception != null) {
-                return (subtitles, exception);
+                var file = new SubtitleFile("srt", subtitles);
+                return (file, exception);
             }
             if (start == null || end == null) {
                 throw new SubtitleException("Illegal State: One of the timestamps is null");
@@ -174,8 +242,7 @@ public class Converter {
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
-
-        return (subtitles, null);
+        return (new SubtitleFile("srt", subtitles), null);
     }
 
     private static string parseSubtitleContent(StreamReader reader) {
@@ -185,7 +252,6 @@ public class Converter {
         if (!string.IsNullOrEmpty(firstContentLine)) {
             // This will not hurt but will enable parsing files that don't stick to the specification
             content.Append(firstContentLine);
-            content.Append('\n');
         }
 
         while (!reader.EndOfStream) {
@@ -193,28 +259,42 @@ public class Converter {
             if (string.IsNullOrEmpty(line)) {
                 break;
             }
-            content.Append(line);
             content.Append('\n');
+            content.Append(line);
         }
-
+        
         return content.ToString();
     }
 
-    public static void serializeTo(List<Subtitle> subtitles, string path, string extension) {
-        string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + extension;
+    public static void serialize(SubtitleFile subtitleFile, string path, string toExtension) {
+        string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + toExtension;
         Console.WriteLine("New name: " + newName);
-        switch (extension) {
+
+        if (subtitleFile.format.StartsWith("mpl")) {
+            subtitleFile.replacePipes();
+        }
+
+        if (subtitleFile.format == "mpl2") {
+            subtitleFile.removeMPLStyling();
+        }
+        switch (toExtension) {
             case "srt":
-                serializeToSRT(subtitles, newName);
+                if (subtitleFile.format == "vtt") {
+                    // maybe this is not even necessary
+                    subtitleFile.stripHtmlTags();
+                }
+                serializeToSRT(subtitleFile.subtitles, newName);
                 return;
             case "vtt":
-                serializeToVTT(subtitles, newName);
+                serializeToVTT(subtitleFile.subtitles, newName);
                 return;
         }
-        FailExit("Unsupported extension: " + extension);
+        FailExit("Unsupported extension: " + toExtension);
         throw new Exception("UNREACHABLE");
     }
 
+    private static readonly byte[] DOUBLE_NEW_LINE = "\n\n"u8.ToArray();
+    
     private static void serializeToSRT(List<Subtitle> subtitles, string path) {
         using FileStream file = File.Create(path);
         using var writer = new StreamWriter(file, Encoding.UTF8);
@@ -234,9 +314,8 @@ public class Converter {
             file.Write(Encoding.ASCII.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
             file.Write(Encoding.ASCII.GetBytes(timestamps));
-            file.Write(Encoding.UTF8.GetBytes(sub.contentNoStyling()));
-            // content already contains a new line
-            file.Write("\n"u8.ToArray());
+            file.Write(Encoding.UTF8.GetBytes(sub.content));
+            file.Write(DOUBLE_NEW_LINE);
         }
         file.Flush();
     }
@@ -258,7 +337,7 @@ public class Converter {
             string timestamps = sub.start.toVtt() + " --> " + sub.end.toVtt() + "\n";
             file.Write(Encoding.ASCII.GetBytes(timestamps));
             file.Write(Encoding.UTF8.GetBytes(sub.content));
-            file.Write("\n"u8.ToArray());
+            file.Write(DOUBLE_NEW_LINE);
         }
     }
 
@@ -364,6 +443,45 @@ public class Converter {
     }
 }
 
+public class SubtitleFile {
+    // format is the extension that applies to the subtitles
+    public readonly string format;
+    public List<Subtitle> subtitles;
+
+    public SubtitleFile(string format, List<Subtitle> subtitles) {
+        this.format = format;
+        this.subtitles = subtitles;
+    }
+
+    public void shiftBy(int ms) {
+        foreach (Subtitle sub in subtitles) {
+            sub.shiftBy(ms);
+        }
+    }
+    
+    public void stripHtmlTags() {
+        foreach (Subtitle sub in subtitles) {
+            sub.content = sub.stripStyling('<', '>');
+        }
+    }
+    
+    public void replacePipes() {
+        foreach (Subtitle sub in subtitles) {
+            sub.content = sub.replacePipes();
+        }
+    }
+    
+    public void removeMPLStyling() {
+        foreach (Subtitle sub in subtitles) {
+            sub.content = sub.stripStyling('{', '}');
+        }
+    }
+
+    public int count() {
+        return subtitles.Count;
+    }
+}
+
 public class Subtitle {
     public Timecode start;
     public Timecode end;
@@ -375,26 +493,30 @@ public class Subtitle {
         this.content = content;
     }
 
-    // Styling examples: <b> <i> <u> <c> <v> <ruby> <rt>
-    public string contentNoStyling() {
+    // In MPL pipes represent new lines
+    public string replacePipes() {
+        return content.Replace('|', '\n');
+    }
+
+    // Styling examples
+    // html tags: <b> <i> <u> <c> <v> <ruby> <rt>
+    // mpl tags: {y:b} {y:i} {y:u}
+    public string stripStyling(char stylingStart, char stylingEnd) {
         var builder = new StringBuilder();
         for (var i = 0; i < content.Length; i++) {
-            var chr = content[i];
-            switch (chr) {
-                case '<':
-                    int closingSign = content.IndexOf('>', i + 1);
-                    if (closingSign == -1) {
-                        // this shouldn't happen but it's a sign that it could be part of text
-                        builder.Append(chr);
-                        break;
-                    }
+            char c = content[i];
+            if (c == stylingStart) {
+                int closingSign = content.IndexOf(stylingEnd, i + 1);
+                if (closingSign == -1) {
+                    // this shouldn't happen but it's a sign that it could be part of text
+                    builder.Append(c);
+                    break;
+                }
 
-                    i = closingSign;
-                    break;
-                default:
-                    builder.Append(chr);
-                    break;
+                i = closingSign;
+                continue;
             }
+            builder.Append(c);
         }
 
         return builder.ToString();
@@ -423,6 +545,25 @@ public class Timecode {
         milliseconds = ms;
     }
 
+    public static Timecode fromFrames(int frames, double fps) {
+        double secondsFraction = frames / fps;
+        int hours = (int) secondsFraction / 3600;
+        if (hours > 0) {
+            secondsFraction %= 3600;
+        }
+        
+        int minutes = (int) secondsFraction / 60;
+        if (minutes > 0) {
+            secondsFraction %= 60;
+        }
+
+        int seconds = (int)secondsFraction;
+        secondsFraction -= seconds;
+
+        int ms = (int)(secondsFraction * 1000);
+        return new Timecode(hours, minutes, seconds, ms);
+    }
+    
     public bool isNegative() {
         return hours < 0 || minutes < 0 || seconds < 0 || milliseconds < 0;
     }
