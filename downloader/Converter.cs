@@ -69,29 +69,45 @@ public class Converter {
             return null;
         }
 
-        if (hasMPLStructure(firstLine)) {
+        if (hasMPLStructure(firstLine, 1)) {
             return "mpl";
         }
 
-        if (firstLine[0] == '{' && firstLine.Contains('}')) {
+        if (hasMPLStructure(firstLine, 2)) {
             return "mpl2";
         }
         return null;
     }
 
-    private static bool hasMPLStructure(string line) {
-        if (line[0] != '[') {
+    private static bool hasMPLStructure(string line, int version) {
+        char openBracket, closingBracket;
+        switch (version) {
+            case 1:
+                openBracket = '[';
+                closingBracket = ']';
+                break;
+            case 2:
+                openBracket = '{';
+                closingBracket = '}';
+                break;
+            default:
+                FailExit("Invalid MPL version: " + version);
+                return false;
+        }
+
+        if (line[0] != openBracket) {
             return false;
         }
 
-        int separator = line.IndexOf("][", StringComparison.Ordinal);
+        string separatorBrackets = "" + closingBracket + openBracket;
+        int separator = line.IndexOf(separatorBrackets, StringComparison.Ordinal);
         if (separator == -1) {
             return false;
         }
 
-        int whitespace = line.IndexOf(' ', separator + 2);
+        int timestampsEnd = line.IndexOf(closingBracket, separator + 3);    
         string startFrame = line[1..separator];
-        string endFrame = line[(separator+2)..whitespace];
+        string endFrame = line[(separator+2)..timestampsEnd];
         return int.TryParse(startFrame, out var n1) && int.TryParse(endFrame, out var n2);
     }
     
