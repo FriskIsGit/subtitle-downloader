@@ -344,6 +344,7 @@ public class SubtitleRow {
     public void fixTitle() {
         StringBuilder fixedTitle = new(broadcastTitle);
         fixedTitle.Replace('\n', ' ');
+        fixedTitle.Replace("\t", "");
         int quoteSt = indexOf(fixedTitle, '"');
         if (quoteSt != -1 && quoteSt + 1 < fixedTitle.Length && fixedTitle[quoteSt + 1] == ' ') {
             fixedTitle.Remove(quoteSt + 1, 1);
