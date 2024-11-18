@@ -41,6 +41,10 @@ public class Converter {
                 // MPL2 (Enhanced MicroDVD): {1}{2}{y:i} Lorem ipsum
                 case "mpl2":
                     return parseMPL2(reader);
+                // https://github.com/libass/libass/wiki/ASS-File-Format-Guide
+                case "ssa":
+                case "ass":
+                    return parseSubStationAlpha(reader);
             }
 
             FailExit("Unsupported extension: " + extension);
@@ -76,7 +80,16 @@ public class Converter {
         if (hasMPLStructure(firstLine, 2)) {
             return "mpl2";
         }
+
+        if (hasSSAStructure(firstLine)) {
+            return "ssa";
+        }
+        
         return null;
+    }
+
+    private static bool hasSSAStructure(string line) {
+        return line.StartsWith('[') && line.EndsWith(']');
     }
 
     private static bool hasMPLStructure(string line, int version) {
@@ -245,6 +258,65 @@ public class Converter {
         return (new SubtitleFile("srt", subtitles), null);
     }
 
+    public static (SubtitleFile, Exception?) parseSubStationAlpha(StreamReader reader) {
+        var subtitles = new List<Subtitle>(2048);
+        // Skip until [Events] section
+        bool foundEventsSection = false;
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (line == null) {
+                break;
+            }
+
+            if (hasSSAStructure(line) && line.Length == 8) {
+                foundEventsSection = true;
+                break;
+            }
+        }
+
+        if (!foundEventsSection) {
+            return (new SubtitleFile("ssa", subtitles), new SubtitleException("[Events] section not found"));
+        }
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (line == null) {
+                break;
+            }
+
+            if (!line.StartsWith("Dialogue")) {
+                continue;
+            }
+
+            // Every line of Dialogue must consist of 10 parts
+            // Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+            int commas = 0;
+            int textStart = -1;
+            for (int i = 0; i < line.Length; i++) {
+                if (line[i] == ',' && ++commas == 9) {
+                    textStart = i + 1;
+                    break;
+                }
+            }
+
+            if (textStart < 0) {
+                return (new SubtitleFile("ssa", subtitles), new SubtitleException("Dialogue 9th comma is missing"));
+            }
+            string[] parts = line[10..textStart].Split(",");
+            var (start, e1) = fromSSATimestamp(parts[1]);
+            if (e1 != null) {
+                return (new SubtitleFile("ssa", subtitles), e1);
+            }
+            var (end, e2) = fromSSATimestamp(parts[2]);
+            if (e2 != null) {
+                return (new SubtitleFile("ssa", subtitles), e2);
+            }
+            string content = line[textStart..];
+            var sub = new Subtitle(start, end, content);
+            subtitles.Add(sub);
+        }
+        return (new SubtitleFile("ssa", subtitles), null);
+    }
+
     private static string parseSubtitleContent(StreamReader reader) {
         var content = new StringBuilder();
         // Parse subtitle text (may span over one or more lines). Nonetheless empty subs may mistakenly appear in some files.
@@ -270,12 +342,13 @@ public class Converter {
         string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + toExtension;
         Console.WriteLine("New name: " + newName);
 
-        if (subtitleFile.format.StartsWith("mpl")) {
+        string fromFormat = subtitleFile.format;
+        if (fromFormat.StartsWith("mpl")) {
             subtitleFile.replacePipes();
         }
 
-        if (subtitleFile.format == "mpl2") {
-            subtitleFile.removeMPLStyling();
+        if (fromFormat == "mpl2" || fromFormat == "ssa" || fromFormat == "ass") {
+            subtitleFile.removeCurlyStyling();
         }
         switch (toExtension) {
             case "srt":
@@ -365,6 +438,10 @@ public class Converter {
         }
 
         return (start, end, null);
+    }
+
+    private static (Timecode?, SubtitleException?) fromSSATimestamp(string timestamp) {
+        return (Timecode.ZERO_CODE, null);
     }
 
     private static (Timecode?, SubtitleException?) fromSrtTimestamp(string timestamp) {
@@ -471,7 +548,7 @@ public class SubtitleFile {
         }
     }
     
-    public void removeMPLStyling() {
+    public void removeCurlyStyling() {
         foreach (Subtitle sub in subtitles) {
             sub.content = sub.stripStyling('{', '}');
         }
@@ -501,6 +578,7 @@ public class Subtitle {
     // Styling examples
     // html tags: <b> <i> <u> <c> <v> <ruby> <rt>
     // mpl tags: {y:b} {y:i} {y:u}
+    // ssa tags: {\i1} {\i0}
     public string stripStyling(char stylingStart, char stylingEnd) {
         var builder = new StringBuilder();
         for (var i = 0; i < content.Length; i++) {

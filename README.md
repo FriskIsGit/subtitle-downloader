@@ -47,6 +47,6 @@ dotnet run
 ```
 
 ### Supported conversions
-_Parsing_: SRT, VTT, MPL, MPL2, SUB, TXT
+_Parsing_: SRT, VTT, MPL, MPL2, SUB, TXT, SSA, ASS
 
 _Serializing to_: SRT, VTT
