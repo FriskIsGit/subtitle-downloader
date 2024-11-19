@@ -10,7 +10,7 @@ public class SubtitleAPI {
     private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
 
     private readonly HttpClient client = new() {
-        Timeout = Timeout.InfiniteTimeSpan,
+        Timeout = TimeSpan.FromSeconds(30),
     };
 
     public List<Production> getSuggestedMovies(string title) {

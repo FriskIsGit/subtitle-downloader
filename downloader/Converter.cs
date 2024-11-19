@@ -311,6 +311,7 @@ public class Converter {
                 return (new SubtitleFile("ssa", subtitles), e2);
             }
             string content = line[textStart..];
+            content = content.Replace("\\N", "\n");
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
@@ -322,7 +323,7 @@ public class Converter {
         // Parse subtitle text (may span over one or more lines). Nonetheless empty subs may mistakenly appear in some files.
         string? firstContentLine = reader.ReadLine();
         if (!string.IsNullOrEmpty(firstContentLine)) {
-            // This will not hurt but will enable parsing files that don't stick to the specification
+            // This will not hurt but will enable parsing files that do not adhere strictly to the specification
             content.Append(firstContentLine);
         }
 
@@ -440,8 +441,31 @@ public class Converter {
         return (start, end, null);
     }
 
+    //h:mm:ss.cs, hours:minute:seconds.hundredths
     private static (Timecode?, SubtitleException?) fromSSATimestamp(string timestamp) {
-        return (Timecode.ZERO_CODE, null);
+        int dot = timestamp.IndexOf('.');
+        if (dot == -1) {
+            return (null, new SubtitleException("No deciseconds, expected a value in range [00, 99]"));
+        }
+        string[] split = timestamp[..dot].Split(':');
+        
+        if (!int.TryParse(split[0], out int hours)) {
+            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse hours"));
+        }
+
+        if (!int.TryParse(split[1], out int minutes)) {
+            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse minutes"));
+        }
+        
+        if (!int.TryParse(split[2], out int seconds)) {
+            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse seconds"));
+        }
+        
+        if (!int.TryParse(timestamp[(dot+1)..], out int centiseconds) || centiseconds > 99) {
+            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse centiseconds"));
+        }
+        
+        return (new Timecode(hours, minutes, seconds, centiseconds * 10), null);
     }
 
     private static (Timecode?, SubtitleException?) fromSrtTimestamp(string timestamp) {
@@ -578,7 +602,7 @@ public class Subtitle {
     // Styling examples
     // html tags: <b> <i> <u> <c> <v> <ruby> <rt>
     // mpl tags: {y:b} {y:i} {y:u}
-    // ssa tags: {\i1} {\i0}
+    // ssa tags: {\i1} {\i0} {\an4\pos(750,869)}
     public string stripStyling(char stylingStart, char stylingEnd) {
         var builder = new StringBuilder();
         for (var i = 0; i < content.Length; i++) {
