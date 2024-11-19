@@ -302,7 +302,7 @@ public class Converter {
                 return (new SubtitleFile("ssa", subtitles), new SubtitleException("Dialogue 9th comma is missing"));
             }
             string[] parts = line[10..textStart].Split(",");
-            var (start, e1) = fromSSATimestamp(parts[1]);
+            var (start, e1) = fromSsaTimestamp(parts[1]);
             if (e1 != null) {
                 return (new SubtitleFile("ssa", subtitles), e1);
             }
@@ -311,6 +311,7 @@ public class Converter {
                 return (new SubtitleFile("ssa", subtitles), e2);
             }
             string content = line[textStart..];
+            // In SSA line breaks are represented as \N
             content = content.Replace("\\N", "\n");
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
