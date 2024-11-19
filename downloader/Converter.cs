@@ -306,7 +306,7 @@ public class Converter {
             if (e1 != null) {
                 return (new SubtitleFile("ssa", subtitles), e1);
             }
-            var (end, e2) = fromSSATimestamp(parts[2]);
+            var (end, e2) = fromSsaTimestamp(parts[2]);
             if (e2 != null) {
                 return (new SubtitleFile("ssa", subtitles), e2);
             }
@@ -429,11 +429,11 @@ public class Converter {
         string startStamp = timestamps[..separator];
         string endStamp = timestamps[(separator+5)..];
 
-        var (start, exception) = srt ? fromSrtTimestamp(startStamp) : fromVTTTimestamp(startStamp);
+        var (start, exception) = srt ? fromSrtTimestamp(startStamp) : fromVttTimestamp(startStamp);
         if (exception != null) {
             return (null, null, exception);
         }
-        (var end, exception) = srt ? fromSrtTimestamp(endStamp) : fromVTTTimestamp(endStamp);
+        (var end, exception) = srt ? fromSrtTimestamp(endStamp) : fromVttTimestamp(endStamp);
         if (exception != null) {
             return (null, null, exception);
         }
@@ -442,10 +442,10 @@ public class Converter {
     }
 
     //h:mm:ss.cs, hours:minute:seconds.hundredths
-    private static (Timecode?, SubtitleException?) fromSSATimestamp(string timestamp) {
+    private static (Timecode?, SubtitleException?) fromSsaTimestamp(string timestamp) {
         int dot = timestamp.IndexOf('.');
         if (dot == -1) {
-            return (null, new SubtitleException("No deciseconds, expected a value in range [00, 99]"));
+            return (null, new SubtitleException("No centiseconds, expected a value in range [00, 99]"));
         }
         string[] split = timestamp[..dot].Split(':');
         
@@ -499,7 +499,7 @@ public class Converter {
     }
 
     // Timecode hours are optional
-    private static (Timecode?, SubtitleException?) fromVTTTimestamp(string timestamp) {
+    private static (Timecode?, SubtitleException?) fromVttTimestamp(string timestamp) {
         int dot = timestamp.IndexOf('.');
         if (dot == -1) {
             return (null, new SubtitleException("Invalid timestamp, fractional values must be preceded by a dot"));
@@ -567,8 +567,9 @@ public class SubtitleFile {
     }
     
     public void replacePipes() {
+        // In MPL pipes represent new lines
         foreach (Subtitle sub in subtitles) {
-            sub.content = sub.replacePipes();
+            sub.content = sub.content.Replace('|', '\n');
         }
     }
     
@@ -592,11 +593,6 @@ public class Subtitle {
         this.start = start;
         this.end = end;
         this.content = content;
-    }
-
-    // In MPL pipes represent new lines
-    public string replacePipes() {
-        return content.Replace('|', '\n');
     }
 
     // Styling examples
