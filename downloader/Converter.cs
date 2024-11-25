@@ -386,6 +386,7 @@ public class Converter {
                 sub.start = Timecode.ZERO_CODE;
             }
             counter++;
+            
             file.Write(Encoding.ASCII.GetBytes(counter + "\n"));
             string timestamps = sub.start.toSrt() + " --> " + sub.end.toSrt() + "\n";
             file.Write(Encoding.ASCII.GetBytes(timestamps));

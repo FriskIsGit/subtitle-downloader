@@ -9,7 +9,7 @@ public class SubtitleScraper {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
-            return ScrapeDownloadButton(doc);
+            return ScrapeDownloadAnchor(doc);
         }
 
         var subtitles = new List<SubtitleRow>();
@@ -155,9 +155,10 @@ public class SubtitleScraper {
         return -1;
     }
     
-    private static List<SubtitleRow> ScrapeDownloadButton(HtmlDoc doc) {
+    private static List<SubtitleRow> ScrapeDownloadAnchor(HtmlDoc doc) {
         Tag? downloadAnchor = doc.Find("a", 
-            ("download", "download", Compare.EXACT),
+            ("itemprop", "url", Compare.EXACT),
+            ("title", "Download", Compare.EXACT),
             ("href", "", Compare.KEY_ONLY));
         if (downloadAnchor is null) {
             Console.WriteLine("Download anchor not found");
@@ -166,12 +167,48 @@ public class SubtitleScraper {
 
         SubtitleRow subtitle = new SubtitleRow();
         string href = downloadAnchor.GetAttribute("href") ?? "";
-        subtitle.setDownloadURL(href);
-        subtitle.broadcastTitle = downloadAnchor.GetAttribute("data-product-title") ?? "";
+        subtitle.downloadURL = href;
+
+        Tag? titleSpan = doc.FindFrom("span",
+            downloadAnchor.StartOffset + 50,
+            ("itemprop", "name", Compare.EXACT));
+        
+        if (titleSpan == null) {
+            Console.WriteLine("No title found!");
+            return new List<SubtitleRow>(1) { subtitle };
+        }
+        
+        subtitle.broadcastTitle = doc.ExtractText(titleSpan);
+
+        Tag? h2 = doc.FindFrom("h2", titleSpan.StartOffset + 50);
+        if (h2 != null) {
+            // The subtitle extension was put at the very end of this header tag for some reason
+            string content = doc.ExtractText(h2);
+            string[] spaceSplit = content.Split(' ');
+            for (int i = spaceSplit.Length - 1; i >= 0; i--) {
+                int length = spaceSplit[i].Length;
+                if (length >= 2 && length <= 4) {
+                    subtitle.format = spaceSplit[i].Trim().ToLower();
+                    break;
+                }
+            }
+        }
+
+        if (h2 != null) {
+            Tag? downloadedAnchor = doc.FindFrom("a", h2.EndOffset,
+                ("class", "none", Compare.EXACT), ("title", "downloaded", Compare.EXACT));
+            if (downloadedAnchor == null) {
+                return new List<SubtitleRow>(1) { subtitle };
+            }
+            string times = doc.ExtractText(downloadedAnchor);
+            int x = times.IndexOf('x');
+            if (x != -1 && ulong.TryParse(times[..x], out ulong downloaded)) {
+                subtitle.downloads = downloaded;
+            }
+        }
         
         return new List<SubtitleRow>(1) { subtitle };
     }
-
 
     public static List<Season> ScrapeSeriesTable(string html) {
         var doc = new HtmlDoc(html);
@@ -336,7 +373,7 @@ public class SubtitleRow {
     public string format = "";
     public string flag = "";
 
-    private string downloadURL = "";
+    public string downloadURL = "";
     
     public ulong downloads;
     public double rating;
