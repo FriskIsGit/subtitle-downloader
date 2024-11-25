@@ -1,10 +1,10 @@
 ﻿# Subtitle downloader
 
-### Usage
+## Usage
 - `<production title> [options...]`
 - `--from [file name] [options...]`
 
-### Arguments
+## Arguments
 - `-s` `-S` `--season` - season number (required for tv series)
 - `-e` `-E` `--episode` - episode number (required for tv series)
 - `--lang` - specifies subtitle language (kinda required)
@@ -18,7 +18,7 @@
 - `--from` - extracts arguments from file name
 - `--dest` `--out` - directory where files are to be placed
 
-### Examples
+## Examples
 
 Fetching movie subtitles
 
@@ -40,13 +40,32 @@ Converting a file from disk
 ./subtitles --subtitle "Starship Troopers (1997).vtt" --to srt --shift +4500
 ```
 
-### Building the project
+## Building the project
 Run in project's root directory
 ```bash
 dotnet run
 ```
 
-### Supported conversions
-_Parsing_: SRT, VTT, MPL, MPL2, SUB, TXT, SSA, ASS
+## Supported conversions
 
-_Serializing to_: SRT, VTT
+| Formats  | Parsing | Serializing to |
+|----------|---------|----------------|
+| SRT      | ✔️      | ️✔             |
+| VTT      | ️✔      | ✔              |
+| MPL, SUB | ✔️      | ️              |
+| MPL2     | ✔️      | ️              |
+| SSA      | ✔️      | ️              |
+
+
+## Fixing bad encoding
+Git comes with many preinstalled binaries among which is `iconv` <br>
+On Windows it can be found at `Git/usr/bin/iconv.exe` where Git is git's root installation directory. <br>
+On Linux it's most likely preinstalled.
+
+```bash
+iconv -f ISO-8859-1 -t UTF-8 subs.srt > subs_utf8.srt
+```
+```bash
+iconv -f WINDOWS-1250 -t UTF-8 subs.srt > subs_utf8.srt
+```
+
