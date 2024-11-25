@@ -51,7 +51,7 @@ dotnet run
 | Formats  | Parsing | Serializing to |
 |----------|---------|----------------|
 | SRT      | ✔️      | ️✔             |
-| VTT      | ️✔      | ✔              |
+| VTT      | ✔       | ✔              |
 | MPL, SUB | ✔️      | ️              |
 | MPL2     | ✔️      | ️              |
 | SSA      | ✔️      | ️              |
