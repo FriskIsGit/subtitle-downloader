@@ -55,6 +55,7 @@ dotnet run
 | MPL, SUB | ✔️      | ️              |
 | MPL2     | ✔️      | ️              |
 | SSA      | ✔️      | ️              |
+| TMP      | ✔️      | ️              |
 
 
 ## Fixing bad encoding

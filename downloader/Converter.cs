@@ -45,6 +45,8 @@ public class Converter {
                 case "ssa":
                 case "ass":
                     return parseSubStationAlpha(reader);
+                case "tmp":
+                    return parseTimeBased(reader);
             }
 
             FailExit("Unsupported extension: " + extension);
@@ -85,9 +87,21 @@ public class Converter {
             return "ssa";
         }
         
+        if (hasTMPStructure(firstLine)) {
+            return "tmp";
+        }
+        
         return null;
     }
-
+    
+    private static bool hasTMPStructure(string line) {
+        if (line.Length < 9) {
+            return false;
+        }
+        // 00:00:04:
+        return line[2] == ':' && line[5] == ':' && line[8] == ':';
+    }
+    
     private static bool hasSSAStructure(string line) {
         return line.StartsWith('[') && line.EndsWith(']');
     }
@@ -231,21 +245,23 @@ public class Converter {
     public static (SubtitleFile, Exception?) parseSRT(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
 
+        SubtitleException? parsingException = null;
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
             if (!int.TryParse(counter, out _)) {
+                parsingException = new SubtitleException("Expected numerical counter");
                 break;
             }
             string? timestamps = reader.ReadLine();
             if (timestamps == null) {
-                var file = new SubtitleFile("srt", subtitles);
-                return (file, new SubtitleException("Expected SRT timestamps [start --> end]"));
+                parsingException = new SubtitleException("Expected SRT timestamps [start --> end]");
+                break;
             }
 
             var (start, end, exception) = parseTimestamps(timestamps, true);
             if (exception != null) {
-                var file = new SubtitleFile("srt", subtitles);
-                return (file, exception);
+                parsingException = exception;
+                break;
             }
             if (start == null || end == null) {
                 throw new SubtitleException("Illegal State: One of the timestamps is null");
@@ -255,7 +271,57 @@ public class Converter {
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
-        return (new SubtitleFile("srt", subtitles), null);
+        return (new SubtitleFile("srt", subtitles), parsingException);
+    }
+
+    public static (SubtitleFile, Exception?) parseTimeBased(StreamReader reader) {
+        var subtitles = new List<Subtitle>(2048);
+
+        SubtitleException? exception = null;
+        bool firstCue = true;
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (line == null) {
+                break;
+            }
+            if (line.Length < 9) {
+                continue;
+            }
+
+            var timestamp = line[..8];
+            var split = timestamp.Split(':');
+            if (split.Length != 3) {
+                continue;
+            }
+            if (!int.TryParse(split[0], out int hours)) {
+                exception = new SubtitleException("Invalid TMP timestamp, failed to parse hours");
+                break;
+            }
+            
+            if (!int.TryParse(split[1], out int minutes)) {
+                exception = new SubtitleException("Invalid TMP timestamp, failed to parse minutes");
+                break;
+            }
+            if (!int.TryParse(split[2], out int seconds)) {
+                exception = new SubtitleException("Invalid TMP timestamp, failed to parse seconds");
+                break;
+            }
+
+            Timecode start = new Timecode(hours, minutes, seconds, 0);
+            string content = line[9..];
+            var sub = new Subtitle(start, Timecode.END_CODE, content);
+            subtitles.Add(sub);
+
+            if (firstCue) {
+                firstCue = false;
+                continue;
+            }
+
+            Subtitle secondLast = subtitles[^2];
+            secondLast.end = sub.start.copy();
+
+        }
+        return (new SubtitleFile("srt", subtitles), exception);
     }
 
     public static (SubtitleFile, Exception?) parseSubStationAlpha(StreamReader reader) {
@@ -345,7 +411,7 @@ public class Converter {
         Console.WriteLine("New name: " + newName);
 
         string fromFormat = subtitleFile.format;
-        if (fromFormat.StartsWith("mpl")) {
+        if (fromFormat.StartsWith("mpl") || fromFormat.StartsWith("tmp")) {
             subtitleFile.replacePipes();
         }
 
@@ -417,7 +483,7 @@ public class Converter {
         }
     }
 
-    private static (Timecode?, Timecode?, Exception?) parseTimestamps(string timestamps, bool srt) {
+    private static (Timecode?, Timecode?, SubtitleException?) parseTimestamps(string timestamps, bool srt) {
         if (timestamps.Length < 23) {
             // minimal VTT timestamps length "01:11.111 --> 01:22.222".Length
             return (null, null, new SubtitleException("The timestamps are too short: " + timestamps));
@@ -636,6 +702,7 @@ public class Subtitle {
 
 public class Timecode {
     public static readonly Timecode ZERO_CODE = new (0, 0, 0, 0);
+    public static readonly Timecode END_CODE = new (99, 59, 59, 999);
     public int hours, minutes, seconds, milliseconds;
 
     public Timecode(int hr, int min, int s, int ms) {
@@ -645,6 +712,10 @@ public class Timecode {
         milliseconds = ms;
     }
 
+    public Timecode copy() {
+        return new Timecode(hours, minutes, seconds, milliseconds);
+    }
+    
     public static Timecode fromFrames(int frames, double fps) {
         double secondsFraction = frames / fps;
         int hours = (int) secondsFraction / 3600;
