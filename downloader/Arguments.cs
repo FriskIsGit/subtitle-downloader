@@ -10,8 +10,8 @@ public struct Arguments {
     private static readonly string[] EXTENSION_FILTER_FLAGS = {"--filter"};
     private static readonly string[] LIST_FLAGS = {"-ls", "--list"};
     private static readonly string[] SKIP_SELECT_FLAGS = {"--skip-select"};
-    private static readonly string[] FROM_FLAGS = {"--from"};
-    private static readonly string[] SUBTITLE_FLAGS = {"--subtitle"};
+    private static readonly string[] EXTRACT_ARGS_FLAGS = {"--extract"};
+    private static readonly string[] FROM_SUBTITLE_FLAGS = {"--from", "--subtitle"};
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = {"--dest", "--out"};
@@ -196,10 +196,10 @@ public struct Arguments {
                 continue;
             }
 
-            if (EqualsAny(currentArg, FROM_FLAGS)) {
+            if (EqualsAny(currentArg, EXTRACT_ARGS_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    Utils.FailExit("A path to file was expected. Help: --from <path>");
+                    Utils.FailExit("A path to file was expected. Help: --extract <path>");
                 }
 
                 string path = args[i + 1];
@@ -208,10 +208,10 @@ public struct Arguments {
                 continue;
             }
             
-            if (EqualsAny(currentArg, SUBTITLE_FLAGS)) {
+            if (EqualsAny(currentArg, FROM_SUBTITLE_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    Utils.FailExit("A path to a subtitle file was expected. Help: --subtitle <path>");
+                    Utils.FailExit("A path to a subtitle file was expected. Help: --from <path>");
                 }
                 string path = args[i + 1];
                 i++;
@@ -539,7 +539,7 @@ public struct Arguments {
         Console.WriteLine();
         Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
         Console.WriteLine($"       {programName} --from [file path] [arguments...]");
-        Console.WriteLine($"       {programName} --subtitle [file path] [arguments...]");
+        Console.WriteLine($"       {programName} --extract [filename] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of a tv series (season > 0)"));
@@ -549,8 +549,8 @@ public struct Arguments {
         Console.WriteLine(formatOption(LIST_FLAGS, "[OPTIONAL] Pretty print seasons and episodes"));
         Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "[OPTIONAL] Filter subtitles by extension"));
         Console.WriteLine(formatOption(SKIP_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
-        Console.WriteLine(formatOption(FROM_FLAGS, "Extracts production details from filename"));
-        Console.WriteLine(formatOption(SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
+        Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
+        Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
         Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
         Console.WriteLine(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
         Console.WriteLine(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
@@ -569,7 +569,7 @@ public struct Arguments {
         Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
         Console.WriteLine();
         Console.WriteLine("Subtitle conversion example:");
-        Console.WriteLine($"  {programName} --subtitle FastAndFurious.srt --shift +5000 --to vtt");
+        Console.WriteLine($"  {programName} --from FastAndFurious.srt --shift +5000 --to vtt");
         Console.WriteLine();
     }
 

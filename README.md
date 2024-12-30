@@ -12,10 +12,10 @@
 - `-ls` `--list` - pretty prints episodes (for TV series)
 - `--filter` - filter subtitles by extension
 - `--skip-select` - automatically select subtitle to download
-- `--subtitle` - parse a subtitle file to edit (with --shift, --to)
-- `--shift` - shifts all timestamps by an offset (ms)
+- `--from` - parse a subtitle file to edit (with --shift, --to)
 - `--to` `--convert-to` - converts to the specified subtitle format
-- `--from` - extracts arguments from file name
+- `--shift` - shifts all timestamps by an offset (ms)
+- `--extract` - extracts arguments from file name
 - `--dest` `--out` - directory where files are to be placed
 
 ## Examples
@@ -37,7 +37,7 @@ Fetching TV series subtitles
 
 Converting a file from disk
 ```bash
-./subtitles --subtitle "Starship Troopers (1997).vtt" --to srt --shift +4500
+./subtitles --from "Starship Troopers (1997).vtt" --to srt --shift +4500
 ```
 
 ## Building the project
