@@ -13,7 +13,7 @@ public class Converter {
 
     public static (SubtitleFile, Exception?) parse(string path, string extension) {
         if (!File.Exists(path)) {
-            FailExit("Subtitle file does not exist! Ensure the path is correct.");
+            Utils.FailExit("Subtitle file does not exist! Ensure the path is correct.");
         }
 
         using FileStream file = File.OpenRead(path);
@@ -30,7 +30,7 @@ public class Converter {
                 case "sub":
                     string? detectedExt = detectSubtitleFormat(reader);
                     if (detectedExt == null) {
-                        FailExit("Unable to detect extension, append the extension to file");
+                        Utils.FailExit("Unable to detect extension, append the extension to file");
                         break;
                     }
                     extension = detectedExt;
@@ -49,7 +49,7 @@ public class Converter {
                     return parseTimeBased(reader);
             }
 
-            FailExit("Unsupported extension: " + extension);
+            Utils.FailExit("Unsupported extension: " + extension);
             throw new Exception("UNREACHABLE");
         }
     }
@@ -118,7 +118,7 @@ public class Converter {
                 closingBracket = '}';
                 break;
             default:
-                FailExit("Invalid MPL version: " + version);
+                Utils.FailExit("Invalid MPL version: " + version);
                 return false;
         }
 
@@ -182,7 +182,7 @@ public class Converter {
             }
             int separator = line.IndexOf("][", StringComparison.Ordinal);
             if (separator == -1) {
-                FailExit("Invalid MPL timestamp - missing ][ in line: " + line);
+                Utils.FailExit("Invalid MPL timestamp - missing ][ in line: " + line);
             }
 
             int timestampsEnd = line.IndexOf(']', separator + 3);    
@@ -193,7 +193,7 @@ public class Converter {
             bool framesOk = int.TryParse(startFrameText, out var startFrame) &&
                             int.TryParse(endFrameText, out endFrame);
             if (!framesOk) {
-                FailExit("Failed to parse frames in line: " + line);
+                Utils.FailExit("Failed to parse frames in line: " + line);
             }
 
             string content = line[(timestampsEnd+1)..];
@@ -217,7 +217,7 @@ public class Converter {
             }
             int separator = line.IndexOf("}{", StringComparison.Ordinal);
             if (separator == -1) {
-                FailExit("Invalid MPL2 timestamp! Expected: }{");
+                Utils.FailExit("Invalid MPL2 timestamp! Expected: }{");
             }
 
             int timestampsEnd = line.IndexOf('}', separator + 3);    
@@ -228,7 +228,7 @@ public class Converter {
             bool framesOk = int.TryParse(startFrameText, out var startFrame) &&
                             int.TryParse(endFrameText, out endFrame);
             if (!framesOk) {
-                FailExit("Failed to parse frames in line: " + line);
+                Utils.FailExit("Failed to parse frames in line: " + line);
             }
 
             string content = line[(timestampsEnd+1)..];
@@ -324,7 +324,7 @@ public class Converter {
         return (new SubtitleFile("srt", subtitles), exception);
     }
 
-    public static (SubtitleFile, Exception?) parseSubStationAlpha(StreamReader reader) {
+    public static (SubtitleFile, SubtitleException?) parseSubStationAlpha(StreamReader reader) {
         var subtitles = new List<Subtitle>(2048);
         // Skip until [Events] section
         bool foundEventsSection = false;
@@ -343,6 +343,8 @@ public class Converter {
         if (!foundEventsSection) {
             return (new SubtitleFile("ssa", subtitles), new SubtitleException("[Events] section not found"));
         }
+
+        SubtitleException? parsingException = null;
         while (!reader.EndOfStream) {
             string? line = reader.ReadLine();
             if (line == null) {
@@ -365,16 +367,17 @@ public class Converter {
             }
 
             if (textStart < 0) {
-                return (new SubtitleFile("ssa", subtitles), new SubtitleException("Dialogue 9th comma is missing"));
+                parsingException = new SubtitleException("Dialogue 9th comma is missing");
+                break;
             }
             string[] parts = line[10..textStart].Split(",");
-            var (start, e1) = fromSsaTimestamp(parts[1]);
-            if (e1 != null) {
-                return (new SubtitleFile("ssa", subtitles), e1);
+            (var start, parsingException) = fromSsaTimestamp(parts[1]);
+            if (parsingException != null) {
+                break;
             }
-            var (end, e2) = fromSsaTimestamp(parts[2]);
-            if (e2 != null) {
-                return (new SubtitleFile("ssa", subtitles), e2);
+            (var end, parsingException) = fromSsaTimestamp(parts[2]);
+            if (parsingException != null) {
+                break;
             }
             string content = line[textStart..];
             // In SSA line breaks are represented as \N
@@ -382,7 +385,7 @@ public class Converter {
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
-        return (new SubtitleFile("ssa", subtitles), null);
+        return (new SubtitleFile("ssa", subtitles), parsingException);
     }
 
     private static string parseSubtitleContent(StreamReader reader) {
@@ -430,7 +433,7 @@ public class Converter {
                 serializeToVTT(subtitleFile.subtitles, newName);
                 return;
         }
-        FailExit("Unsupported extension: " + toExtension);
+        Utils.FailExit("Unsupported extension: " + toExtension);
         throw new Exception("UNREACHABLE");
     }
 
@@ -604,11 +607,6 @@ public class Converter {
                 return (timecode, null);
         }
         return (null, new SubtitleException("Invalid timestamp, expected either a 2-split or a 3-split"));
-    }
-
-    private static void FailExit(string message) {
-        Console.WriteLine(message);
-        Environment.Exit(1);
     }
 }
 

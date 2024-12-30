@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.6.6";
+    public const string VERSION = "1.6.7";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -23,9 +23,9 @@ class Program {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
-        
+
         string path = arguments.subtitleFromFile ? arguments.subtitlePath : fetchSubtitle(arguments);
-        if (!arguments.shift && !arguments.convert) {
+        if (arguments.shiftMs == 0 && !arguments.convert) {
             Console.WriteLine("Finished!");
             return;
         }
@@ -58,13 +58,13 @@ class Program {
     }
 
     private static string fetchSubtitle(Arguments arguments) {
-        var api = new SubtitleAPI();
+        var api = new OpenSubtitleAPI();
         List<Production> productions = api.getSuggestedMovies(arguments.title);
         if (productions.Count == 0) {
             Console.WriteLine("No suggested productions found, falling back to search");
             productions = api.searchProductions(arguments);
             if (productions.Count == 0) {
-                FailExit("Fallback failed!");
+                Utils.FailExit("Fallback failed!");
             }
         }
         
@@ -77,7 +77,11 @@ class Program {
         }
         
         // Series fetching logic
-        string seasonsHtml = api.fetchHtml(pageUrl).content;
+        SimpleResponse seasonsResponse = api.fetchHtml(pageUrl);
+        if (seasonsResponse.isError()) {
+            Utils.FailExit("Failed to fetch seasons. URL: " + seasonsResponse.lastLocation);
+        }
+        string seasonsHtml = seasonsResponse.content;
         List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
         if (arguments.listSeries) {
             prettyPrint(seasons);
@@ -85,19 +89,23 @@ class Program {
         Episode episode = getRequestedEpisode(seasons, arguments.season, arguments.episode);
         Console.WriteLine($"\"{episode.name}\" S{arguments.season} E{episode.number}");
         if (episode.url.Length == 0) {
-            FailExit("This episode has no subtitles for given language, try again with --lang all");
+            Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
         }
         return downloadSubtitle(api, episode.getPageUrl(), arguments, episode.name);
     }
 
     // Returns the full path to the downloaded subtitle file, if there is more than one - returns the first found
-    private static string downloadSubtitle(SubtitleAPI api, string pageURL, Arguments args, string? fileName = null) {
-        string html = api.fetchHtml(pageURL).content;
+    private static string downloadSubtitle(OpenSubtitleAPI api, string pageURL, Arguments args, string? fileName = null) {
+        var response = api.fetchHtml(pageURL);
+        if (response.isError()) {
+            Utils.FailExit("Failed to download subtitle");
+        }
+        string html = response.content;
         Console.WriteLine($"Scraping: {pageURL}");
 
         List<SubtitleRow> rows = SubtitleScraper.ScrapeSubtitleTable(html);
         if (rows.Count == 0) {
-            FailExit("No subtitle elements were scraped");
+            Utils.FailExit("No subtitle elements were scraped");
         }
         SubtitleRow bestSubtitle = selectSubtitle(rows, args);
 
@@ -112,26 +120,21 @@ class Program {
             download.Wait();
         }
         catch (Exception e) {
-            FailExit(e.Message);
+            Utils.FailExit(e.Message);
         }
 
         if (!download.Result) {
-            FailExit("The download failed!");
+            Utils.FailExit("The download failed!");
         }
         
         Console.WriteLine("Unzipping " + downloadedZip);
         List<string> extracted = Utils.unzip(downloadedZip, outputDir);
         if (extracted.Count == 0) {
-            FailExit("THE ZIP IS EMPTY - No elements were extracted from the zip file!");
+            Utils.FailExit("THE ZIP IS EMPTY - No elements were extracted from the zip file!");
         }
         Console.WriteLine("Cleaning up..");
         File.Delete(downloadedZip);
         return extracted[0];
-    }
-
-    private static void FailExit(string message) {
-        Console.WriteLine(message);
-        Environment.Exit(1);
     }
 
     private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
@@ -144,7 +147,7 @@ class Program {
         }
         
         if (seasonIndex == -1) {
-            FailExit($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
+            Utils.FailExit($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
         }
 
         Season season = seasons[seasonIndex];
@@ -154,7 +157,7 @@ class Program {
             }
         }
 
-        FailExit($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
+        Utils.FailExit($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
         throw new UnreachableException();
     }
 
@@ -175,9 +178,9 @@ class Program {
     }
     
     private static string createSubtitleUrl(string language, uint prodId) {
-        string languageId = SubtitleAPI.toSubLanguageID(language);
+        string languageId = OpenSubtitleAPI.toSubLanguageID(language);
         // Console.WriteLine("Language id: " + languageId);
-        return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
+        return $"https://www.opensubtitles.org/en/ssearch/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
@@ -204,7 +207,7 @@ class Program {
                 }
             }
             if (filtered.Count == 0) {
-                FailExit("No subtitles remained after filtering by extension(" + extension + ") :(");
+                Utils.FailExit("No subtitles remained after filtering by extension(" + extension + ") :(");
             }
             sortedRows = filtered;
         }
@@ -261,7 +264,7 @@ class Program {
         keepKind(productions, arguments.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
-                FailExit("ERROR: No productions remained after filtering");
+                Utils.FailExit("ERROR: No productions remained after filtering");
                 break;
             case 1:
                 return productions[0];

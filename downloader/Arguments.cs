@@ -42,7 +42,6 @@ public struct Arguments {
     public int shiftMs = 0;
     
     public bool subtitleFromFile = false;
-    public bool shift = false;
     public bool convert = false;
 
     public bool isMovie = true;
@@ -76,7 +75,7 @@ public struct Arguments {
                             arguments.providedSeason = true;
                         }
                         else {
-                            FailExit("Failed to parse (adjacent) season number!");
+                            Utils.FailExit("Failed to parse (adjacent) season number!");
                         }
                         break;
                     case false:
@@ -87,7 +86,7 @@ public struct Arguments {
                             i++;
                         }
                         else {
-                            FailExit("Failed to parse (separate) season number!");
+                            Utils.FailExit("Failed to parse (separate) season number!");
                         }
                         break;
                 }
@@ -109,7 +108,7 @@ public struct Arguments {
                             arguments.providedEpisode = true;
                         }
                         else {
-                            FailExit("Failed to parse (adjacent) episode number!");
+                            Utils.FailExit("Failed to parse (adjacent) episode number!");
                         }
                         break;
                     case false:
@@ -120,7 +119,7 @@ public struct Arguments {
                             i++;
                         }
                         else {
-                            FailExit("Failed to parse (separate) episode number!");
+                            Utils.FailExit("Failed to parse (separate) episode number!");
                         }
                         break;
                 }
@@ -140,7 +139,7 @@ public struct Arguments {
                             arguments.year = value;
                         }
                         else {
-                            FailExit("Failed to parse (adjacent) year number!");
+                            Utils.FailExit("Failed to parse (adjacent) year number!");
                         }
                         break;
                     case false:
@@ -150,7 +149,7 @@ public struct Arguments {
                             i++;
                         }
                         else {
-                            FailExit("Failed to parse (separate) year number!");
+                            Utils.FailExit("Failed to parse (separate) year number!");
                         }
                         break;
                 }
@@ -160,7 +159,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, LANGUAGE_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("The language argument wasn't provided. Help: --lang <language>");
+                    Utils.FailExit("The language argument wasn't provided. Help: --lang <language>");
                 }
                 
                 arguments.language = args[i + 1];
@@ -171,7 +170,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, EXTENSION_FILTER_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("No extension provided. Usage: --filter <extension>");
+                    Utils.FailExit("No extension provided. Usage: --filter <extension>");
                 }
                 string ext = args[i + 1].ToLower();
                 if (ext.Length < 2) {
@@ -200,7 +199,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, FROM_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("A path to file was expected. Help: --from <path>");
+                    Utils.FailExit("A path to file was expected. Help: --from <path>");
                 }
 
                 string path = args[i + 1];
@@ -212,7 +211,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, SUBTITLE_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("A path to a subtitle file was expected. Help: --subtitle <path>");
+                    Utils.FailExit("A path to a subtitle file was expected. Help: --subtitle <path>");
                 }
                 string path = args[i + 1];
                 i++;
@@ -224,12 +223,11 @@ public struct Arguments {
             if (EqualsAny(currentArg, SHIFT_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (hasNext && int.TryParse(args[i + 1], out int shiftMs)) {
-                    arguments.shift = true;
                     arguments.shiftMs = shiftMs;
                     i++;
                 }
                 else {
-                    FailExit("Milliseconds [+/-] were expected as the next argument. Help: --shift <ms>");
+                    Utils.FailExit("Milliseconds [+/-] were expected as the next argument. Help: --shift <ms>");
                 }
                 continue;
             }
@@ -237,7 +235,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, CONVERT_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("A path to a subtitle file was expected. Help: --convert-to <extension>");
+                    Utils.FailExit("A path to a subtitle file was expected. Help: --convert-to <extension>");
                 }
                 string ext = args[i + 1].ToLower();
                 if (ext.Length < 2) {
@@ -258,7 +256,7 @@ public struct Arguments {
             if (EqualsAny(currentArg, OUTPUT_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
-                    FailExit("An argument was expected. Help: --out <directory_path>");
+                    Utils.FailExit("An argument was expected. Help: --out <directory_path>");
                 }
                 string outputPath = args[i + 1];
                 i++;
@@ -414,7 +412,7 @@ public struct Arguments {
             return false;
         }
         
-        if (shift) {
+        if (shiftMs != 0) {
             if (shiftMs < BACKWARD_SHIFT_CAP) {
                 Console.WriteLine("The shift goes too far back!");
                 return false;
@@ -457,11 +455,6 @@ public struct Arguments {
         return false;
     }
 
-    private static void FailExit(string message) {
-        Console.WriteLine(message);
-        Environment.Exit(1);
-    }
-    
     public static (string title, uint year) ParseTitleYear(string name) {
         int bracketOpen = name.LastIndexOf('(');
         if (bracketOpen == -1) {

@@ -5,12 +5,13 @@ using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader; 
 
-public class SubtitleAPI {
+public class OpenSubtitleAPI {
     private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
     private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
+    private const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130";
 
     private readonly HttpClient client = new() {
-        Timeout = TimeSpan.FromSeconds(30),
+        Timeout = TimeSpan.FromSeconds(60),
     };
 
     public List<Production> getSuggestedMovies(string title) {
@@ -47,6 +48,10 @@ public class SubtitleAPI {
             url.Append($"/MovieYear-{arguments.year}");
         }
         var simpleResponse = fetchHtml(url.ToString());
+        if (simpleResponse.isError()) {
+            Utils.FailExit("Failed to fetch seasons. Code:" + simpleResponse.statusCode);
+        }
+        
         // it's possible to be redirected to the target website after search if there's only 1 result
         string? location = simpleResponse.lastLocation;
         if (location != null && location.Contains("/imdbid-")) {
@@ -69,7 +74,7 @@ public class SubtitleAPI {
             Method = HttpMethod.Get,
         };
         
-        getRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0 Gecko/20100101");
+        getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
         getRequest.Headers.Accept.ParseAdd("application/json");
         var response = client.Send(getRequest);
         HttpStatusCode code = response.StatusCode;
@@ -82,11 +87,19 @@ public class SubtitleAPI {
             RequestUri = new Uri(url),
             Method = HttpMethod.Get,
         };
-        getRequest.Headers.UserAgent.ParseAdd("Mozilla/5.0 Gecko/20100101");
+        getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
         getRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
         getRequest.Headers.AcceptLanguage.ParseAdd("en-US;q=0.7");
         getRequest.Headers.Add("Set-GPC", "1");
-        var response = client.Send(getRequest);
+        HttpResponseMessage? response;
+        try {
+            response = client.Send(getRequest);
+        }
+        catch (Exception exception) {
+            Utils.FailExit(exception.Message);
+            return new SimpleResponse(HttpStatusCode.ServiceUnavailable, "", url);
+        }
+         
         string content = response.Content.ReadAsStringAsync().Result;
         if (response.StatusCode == HttpStatusCode.OK) {
             return new SimpleResponse(response.StatusCode, content, url);
@@ -98,7 +111,7 @@ public class SubtitleAPI {
             return fetchHtml(response.Headers.Location.ToString());
         }
         
-        Console.WriteLine("Response Code: " + statusCode);
+        Console.WriteLine("Response code: " + statusCode);
         return new SimpleResponse(response.StatusCode, content, url);
     }
     
@@ -143,5 +156,9 @@ public struct SimpleResponse {
         statusCode = code;
         this.content = content;
         this.lastLocation = lastLocation;
+    }
+
+    public bool isError() {
+        return (int)statusCode >= 400;
     }
 }
