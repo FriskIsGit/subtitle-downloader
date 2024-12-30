@@ -190,12 +190,7 @@ public class Utils {
 
         return builder;
     }
-    
-    public static void Something(string message) {
-        Console.WriteLine(message);
-        Environment.Exit(1);
-    }
-    
+
     public static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);
