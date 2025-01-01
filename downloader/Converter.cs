@@ -713,7 +713,23 @@ public class Timecode {
     public Timecode copy() {
         return new Timecode(hours, minutes, seconds, milliseconds);
     }
-    
+
+    public static Timecode fromSeconds(int seconds) {
+        int hr = 0, m = 0, s = 0;
+        if (seconds >= 3600) {
+            hr = seconds / 3600;
+            seconds %= 3600;
+        }
+        if (seconds >= 60) {
+            m = (seconds / 60) | 0;
+            seconds %= 60;
+        }
+        if (seconds > 0) {
+            s = seconds;
+        }
+        return new Timecode(hr, m, s, 0);
+    }
+
     public static Timecode fromFrames(int frames, double fps) {
         double secondsFraction = frames / fps;
         int hours = (int) secondsFraction / 3600;

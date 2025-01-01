@@ -16,7 +16,8 @@ public struct Arguments {
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = {"--dest", "--out"};
     private static readonly string[] HELP_FLAGS = {"-h", "-help", "--help"};
-   
+    private static readonly string[] DEV_GEN_FLAGS = {"--gen"};
+
     private static readonly string[] SUBTITLE_FORMATS = { 
         "srt", "ssa", "vtt", "aqt", "gsub", "jss", "sub", "ttxt", "pjs", 
         "psb", "rt", "smi", "stl", "ssf", "ass", "sbv", "usf", "idx"
@@ -50,6 +51,9 @@ public struct Arguments {
     
     private bool providedSeason = false;
     private bool providedEpisode = false;
+
+    public bool devMode = false;
+    public int devGenerationCount = 0;
 
     public Arguments() {
     }
@@ -264,6 +268,19 @@ public struct Arguments {
                 continue;
             }
             
+            if (EqualsAny(currentArg, DEV_GEN_FLAGS)) {
+                bool hasNext = i + 1 < args.Length;
+                if (!hasNext) {
+                    continue;
+                }
+                if (int.TryParse(args[i + 1], out int count)) {
+                    arguments.devGenerationCount = count;
+                    arguments.devMode = true;
+                    i++;
+                }
+                continue;
+            }
+            
             if (EqualsAny(currentArg, HELP_FLAGS)) {
                 PrintHelp();
                 Environment.Exit(0);
@@ -378,6 +395,9 @@ public struct Arguments {
     }
 
     public bool Validate() {
+        if (devMode) {
+            return true;
+        }
         if (title.Length == 0 && !subtitleFromFile) {
             Console.WriteLine("The title cannot be empty");
             return false;

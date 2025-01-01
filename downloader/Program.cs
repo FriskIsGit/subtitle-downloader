@@ -24,6 +24,11 @@ class Program {
             return;
         }
 
+        if (arguments.devGenerationCount != 0) {
+            generateCues(arguments);
+            return;
+        }
+        
         string path = arguments.subtitleFromFile ? arguments.subtitlePath : fetchSubtitle(arguments);
         if (arguments.shiftMs == 0 && !arguments.convert) {
             Console.WriteLine("Finished!");
@@ -55,6 +60,31 @@ class Program {
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
         Converter.serialize(subtitleFile, path,  newExtension);
         Console.WriteLine("Finished");
+    }
+
+    private static void generateCues(Arguments arguments) {
+        int count = arguments.devGenerationCount;
+        Console.WriteLine("Generating " + count + " cues.");
+        const int length = 2;
+        const int delay = 1;
+        int offsetSeconds = 0;
+        List<Subtitle> subtitles = new List<Subtitle>();
+        for (int i = 0; i < count; i++) {
+            var start = Timecode.fromSeconds(offsetSeconds);
+            int endSeconds = offsetSeconds + length;
+            var end = Timecode.fromSeconds(endSeconds);
+            var subtitle = new Subtitle(start, end, 
+                i + ". Auto-Generated chunk [" + start.toVtt() + "-->" + end.toVtt() + ']');
+            subtitles.Add(subtitle);
+            offsetSeconds = endSeconds + delay;
+        }
+
+        string extension = arguments.convert ? arguments.convertToExtension : "srt";
+        if (arguments.convert) {
+            Console.WriteLine("Serializing!");
+            var file = new SubtitleFile("", subtitles);
+            Converter.serialize(file, "gen",  extension);
+        }
     }
 
     private static string fetchSubtitle(Arguments arguments) {
@@ -180,7 +210,7 @@ class Program {
     private static string createSubtitleUrl(string language, uint prodId) {
         string languageId = OpenSubtitleAPI.toSubLanguageID(language);
         // Console.WriteLine("Language id: " + languageId);
-        return $"https://www.opensubtitles.org/en/ssearch/sublanguageid-{languageId}/idmovie-{prodId}";
+        return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
