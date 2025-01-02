@@ -29,7 +29,7 @@ public class SubtitleScraper {
             };
             subtitleRow.fixTitle();
             
-            var flagDiv = doc.FindFrom("div", strong.EndOffset, ("class", "flag", Compare.VALUE_STARTS_WITH));
+            var flagDiv = doc.FindFrom("div", strong.EndOffset, Compare.KeyAndValuePrefix("class", "flag"));
             if (flagDiv != null) {
                 subtitleRow.flag = flagDiv.GetAttribute("class") ?? "";
             } else {
@@ -38,7 +38,7 @@ public class SubtitleScraper {
             }
             
             var downloadAnchor = doc.FindFrom("a", flagDiv.StartOffset + 10, 
-                ("href", "", Compare.KEY_ONLY), ("onclick", "", Compare.KEY_ONLY));
+                Compare.Key("href"), Compare.Key("onclick"));
             if (downloadAnchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
@@ -52,14 +52,14 @@ public class SubtitleScraper {
                 subtitleRow.downloads = ulong.Parse(timesDownloaded[..x]);
             } catch { }
 
-            var extensionSpan = doc.FindFrom("span", downloadAnchor.EndOffset, ("class", "p", Compare.EXACT));
+            var extensionSpan = doc.FindFrom("span", downloadAnchor.EndOffset, Compare.Exact("class", "p"));
             if (extensionSpan is null) {
                 subtitles.Add(subtitleRow);
                 continue;
             }
             subtitleRow.format = doc.ExtractText(extensionSpan);
             
-            var ratingSpan = doc.FindFrom("span", extensionSpan.EndOffset, ("title", "", Compare.KEY_ONLY));
+            var ratingSpan = doc.FindFrom("span", extensionSpan.EndOffset, Compare.Key("title"));
             if (ratingSpan is null) {
                 subtitles.Add(subtitleRow);
                 continue;
@@ -90,7 +90,7 @@ public class SubtitleScraper {
             if (id == null || !id.StartsWith("name")) {
                 continue;
             }
-            var data = doc.FindFrom("td", tag.StartOffset, ("id", "main", Compare.VALUE_STARTS_WITH));
+            var data = doc.FindFrom("td", tag.StartOffset, Compare.KeyAndValuePrefix("id", "main"));
             if (data is null) {
                 continue;
             }
@@ -101,7 +101,7 @@ public class SubtitleScraper {
             
             string productionName = doc.ExtractText(strong);
             
-            var anchor = doc.FindFrom("a", strong.StartOffset + 6, ("class", "bnone", Compare.EXACT));
+            var anchor = doc.FindFrom("a", strong.StartOffset + 6, Compare.Exact("class", "bnone"));
             if (anchor is null) {
                 continue;
             }
@@ -157,9 +157,9 @@ public class SubtitleScraper {
     
     private static List<SubtitleRow> ScrapeDownloadAnchor(HtmlDoc doc) {
         Tag? downloadAnchor = doc.Find("a", 
-            ("itemprop", "url", Compare.EXACT),
-            ("title", "Download", Compare.EXACT),
-            ("href", "", Compare.KEY_ONLY));
+            Compare.Exact("itemprop", "url"),
+            Compare.Exact("title", "Download"),
+            Compare.Key("href"));
         if (downloadAnchor is null) {
             Console.WriteLine("Download anchor not found");
             return new List<SubtitleRow>();
@@ -171,7 +171,7 @@ public class SubtitleScraper {
 
         Tag? titleSpan = doc.FindFrom("span",
             downloadAnchor.StartOffset + 50,
-            ("itemprop", "name", Compare.EXACT));
+            Compare.Exact("itemprop", "name"));
         
         if (titleSpan == null) {
             Console.WriteLine("No title found!");
@@ -196,7 +196,7 @@ public class SubtitleScraper {
 
         if (h2 != null) {
             Tag? downloadedAnchor = doc.FindFrom("a", h2.EndOffset,
-                ("class", "none", Compare.EXACT), ("title", "downloaded", Compare.EXACT));
+                Compare.Exact("class", "none"), Compare.Exact("title", "downloaded"));
             if (downloadedAnchor == null) {
                 return new List<SubtitleRow>(1) { subtitle };
             }
@@ -229,7 +229,7 @@ public class SubtitleScraper {
                 continue;
             }
 
-            Tag? seasonTag = doc.FindFrom("span", tr.StartOffset + 2, ("id", "season", Compare.VALUE_STARTS_WITH));
+            Tag? seasonTag = doc.FindFrom("span", tr.StartOffset + 2, Compare.KeyAndValuePrefix("id", "season"));
             if (seasonTag is null) {
                 continue;
             }
@@ -248,13 +248,13 @@ public class SubtitleScraper {
             }
             catch { }
 
-            Tag? seasonAnchor = doc.FindFrom("a", seasonTag.StartOffset + 10, ("href", "", Compare.KEY_ONLY));
+            Tag? seasonAnchor = doc.FindFrom("a", seasonTag.StartOffset + 10, Compare.Key("href"));
             if (seasonAnchor is null) {
                 continue;
             }
 
             if (seasonAnchor.Attributes.Count > 1) {
-                seasonAnchor = doc.FindFrom("a", seasonAnchor.StartOffset + 10, ("href", "", Compare.KEY_ONLY));
+                seasonAnchor = doc.FindFrom("a", seasonAnchor.StartOffset + 10, Compare.Key("href"));
                 if (seasonAnchor is null) {
                     continue;
                 }
@@ -282,12 +282,12 @@ public class SubtitleScraper {
                 continue;
             }
 
-            Tag? spanEpisodeNumber = doc.FindFrom("span", tr.StartOffset + 10, ("itemprop", "episodeNumber", Compare.EXACT));
+            Tag? spanEpisodeNumber = doc.FindFrom("span", tr.StartOffset + 10, Compare.Exact("itemprop", "episodeNumber"));
             if (spanEpisodeNumber is null) {
                 continue;
             }
 
-            Episode episode = new Episode();
+            var episode = new Episode();
             string episodeStr = doc.ExtractText(spanEpisodeNumber);
             try {
                 episode.number = int.Parse(episodeStr);
@@ -295,8 +295,8 @@ public class SubtitleScraper {
             catch { continue; }
             
             Tag? episodeInfo = doc.FindFrom("a", spanEpisodeNumber.StartOffset + 10, 
-                ("itemprop", "url", Compare.EXACT),
-                ("href", "", Compare.KEY_ONLY));
+                Compare.Exact("itemprop", "url"),
+                Compare.Key("href"));
             if (episodeInfo is null || spanEpisodeNumber.EndOffset + 10 < episodeInfo.StartOffset) {
                 // Extract td after tr
                 Tag? td = doc.FindFrom("td", tr.StartOffset + 10);
@@ -311,7 +311,7 @@ public class SubtitleScraper {
             episode.url = episodeInfo.GetAttribute("href") ?? "";
 
             Tag? episodeName = doc.FindFrom("span", episodeInfo.StartOffset + 10,
-                ("itemprop", "name", Compare.EXACT));
+                Compare.Exact("itemprop", "name"));
             if (episodeName is null) {
                 continue;
             }
@@ -327,8 +327,8 @@ public class SubtitleScraper {
     public static List<Language> ScrapeSubtitleLanguages(string html) {
         HtmlDoc doc = new HtmlDoc(html);
         int selectIndex = html.IndexOf("<select", StringComparison.Ordinal);
-        var ul = doc.FindFrom("select", selectIndex, ("name", "SubLanguageID", Compare.EXACT), 
-            ("id", "SubLanguageID", Compare.EXACT)
+        var ul = doc.FindFrom("select", selectIndex, 
+            Compare.Exact("name", "SubLanguageID"), Compare.Exact("id", "SubLanguageID")
         );
         if (ul == null) {
             return new List<Language>();

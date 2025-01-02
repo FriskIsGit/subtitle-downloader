@@ -68,7 +68,7 @@ class Program {
         const int length = 2;
         const int delay = 1;
         int offsetSeconds = 0;
-        List<Subtitle> subtitles = new List<Subtitle>();
+        var subtitles = new List<Subtitle>(count);
         for (int i = 0; i < count; i++) {
             var start = Timecode.fromSeconds(offsetSeconds);
             int endSeconds = offsetSeconds + length;

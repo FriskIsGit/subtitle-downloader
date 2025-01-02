@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Diagnostics;
+using System.Text;
 
 namespace subtitle_downloader.downloader;
 
@@ -15,7 +16,7 @@ public class Converter {
         if (!File.Exists(path)) {
             Utils.FailExit("Subtitle file does not exist! Ensure the path is correct.");
         }
-
+        
         using FileStream file = File.OpenRead(path);
         using var reader = new StreamReader(file, Encoding.UTF8, true);
 
@@ -243,6 +244,8 @@ public class Converter {
     }
 
     public static (SubtitleFile, Exception?) parseSRT(StreamReader reader) {
+        Stopwatch sw = new Stopwatch();
+        sw.Start();
         var subtitles = new List<Subtitle>(2048);
 
         SubtitleException? parsingException = null;
@@ -271,6 +274,8 @@ public class Converter {
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
+        sw.Stop();
+        Console.WriteLine("Elapsed={0}ms", sw.ElapsedMilliseconds);
         return (new SubtitleFile("srt", subtitles), parsingException);
     }
 
