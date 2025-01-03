@@ -20,25 +20,23 @@ public class SubtitleScraper {
                 continue;
             }
             
-            var strong = doc.FindFrom("strong", tr.StartOffset + 100);
-            if (strong is null) {
+            var anchor = doc.FindFrom("a", tr.StartOffset + 100,
+                Compare.Exact("class", "bnone"),
+                Compare.Key("title"),
+                Compare.Key("href"),
+                Compare.KeyAndValuePrefix("onclick", "if")
+                );
+            if (anchor is null) {
                 continue;
             }
             SubtitleRow subtitleRow = new SubtitleRow {
-                broadcastTitle = doc.ExtractText(strong)
+                broadcastTitle = doc.ExtractText(anchor)
             };
             subtitleRow.fixTitle();
-            
-            var flagDiv = doc.FindFrom("div", strong.EndOffset, Compare.KeyAndValuePrefix("class", "flag"));
-            if (flagDiv != null) {
-                subtitleRow.flag = flagDiv.GetAttribute("class") ?? "";
-            } else {
-                subtitles.Add(subtitleRow);
-                continue;
-            }
-            
-            var downloadAnchor = doc.FindFrom("a", flagDiv.StartOffset + 10, 
-                Compare.Key("href"), Compare.Key("onclick"));
+
+            var downloadAnchor = doc.FindFrom("a", anchor.EndOffset + 100, 
+                Compare.KeyAndValuePrefix("href", "/en/subtitleserve"), 
+                Compare.Key("onclick"));
             if (downloadAnchor is null) {
                 subtitles.Add(subtitleRow);
                 continue;
@@ -47,8 +45,8 @@ public class SubtitleScraper {
             string href = downloadAnchor.GetAttribute("href") ?? "";
             subtitleRow.setDownloadURL(href);
             string timesDownloaded = doc.ExtractText(downloadAnchor);
-            int x = timesDownloaded.IndexOf('x');
             try {
+                int x = timesDownloaded.IndexOf('x');
                 subtitleRow.downloads = ulong.Parse(timesDownloaded[..x]);
             } catch { }
 
@@ -101,7 +99,8 @@ public class SubtitleScraper {
             
             string productionName = doc.ExtractText(strong);
             
-            var anchor = doc.FindFrom("a", strong.StartOffset + 6, Compare.Exact("class", "bnone"));
+            var anchor = doc.FindFrom("a", strong.StartOffset + 6, 
+                Compare.Exact("class", "bnone"), Compare.Key("title"));
             if (anchor is null) {
                 continue;
             }
@@ -115,10 +114,6 @@ public class SubtitleScraper {
             // This logic is meant to skip episode entries which follow this format: [S1E1] 
             int episodeSt = shortIndexOf(html, '[', strong.EndOffset, strong.EndOffset + 10);
             if (episodeSt != -1) {
-                /*int episodeEnd = shortIndexOf(html, ']', episodeSt, episodeSt + 10);
-                if (episodeEnd != -1) {
-                    Console.WriteLine($"Skipping episode {html[(episodeSt+1)..episodeEnd]}");
-                }*/
                 continue;
             }
 
@@ -371,7 +366,6 @@ public class SubtitleRow {
     // title is either movie name or episode name
     public string broadcastTitle = "";
     public string format = "";
-    public string flag = "";
 
     public string downloadURL = "";
     
