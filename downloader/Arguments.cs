@@ -6,6 +6,7 @@ public struct Arguments {
     private static readonly string[] SEASON_FLAGS   = {"-s", "-S", "--season"};
     private static readonly string[] EPISODE_FLAGS  = {"-e", "-E", "--episode"};
     private static readonly string[] YEAR_FLAGS     = {"-y", "--year"};
+    private static readonly string[] PACK_FLAGS     = {"-p", "--pack"};
     private static readonly string[] LANGUAGE_FLAGS = {"--lang"};
     private static readonly string[] EXTENSION_FILTER_FLAGS = {"--filter"};
     private static readonly string[] LIST_FLAGS = {"-ls", "--list"};
@@ -44,6 +45,7 @@ public struct Arguments {
     
     public bool subtitleFromFile = false;
     public bool convert = false;
+    public bool downloadPack = false;
 
     public bool isMovie = true;
     public bool listSeries = false;
@@ -187,6 +189,11 @@ public struct Arguments {
                 }
                 arguments.extensionFilter = ext;
                 i++;                
+                continue;
+            }
+
+            if (EqualsAny(currentArg, PACK_FLAGS)) {
+                arguments.downloadPack = true;
                 continue;
             }
 
@@ -412,8 +419,13 @@ public struct Arguments {
         }
 
         if (!isMovie) {
-            if (!providedSeason || !providedEpisode) {
-                Console.WriteLine("For TV series season and episode arguments are required");
+            if (downloadPack) {
+                if (!providedSeason) {
+                    Console.WriteLine("Unspecified season number for the pack");
+                    return false;
+                }
+            } else if (!providedSeason || !providedEpisode) {
+                Console.WriteLine("For TV series season and episode arguments are required unless it's a pack download");
                 return false;
             }
 
@@ -569,6 +581,7 @@ public struct Arguments {
         Console.WriteLine(formatOption(LIST_FLAGS, "[OPTIONAL] Pretty print seasons and episodes"));
         Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "[OPTIONAL] Filter subtitles by extension"));
         Console.WriteLine(formatOption(SKIP_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
+        Console.WriteLine(formatOption(PACK_FLAGS, "[UNIMPLEMENTED] Download season as pack (<= 50 episodes)"));
         Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
         Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
         Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
@@ -587,6 +600,7 @@ public struct Arguments {
         Console.WriteLine("Usage example:");
         Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
         Console.WriteLine($"  {programName} \"Office\" -y2005 -S9 -E19");
+        Console.WriteLine($"  {programName} \"Spongebob\" --year 1999 --season 2 --pack");
         Console.WriteLine();
         Console.WriteLine("Subtitle conversion example:");
         Console.WriteLine($"  {programName} --from FastAndFurious.srt --shift +5000 --to vtt");

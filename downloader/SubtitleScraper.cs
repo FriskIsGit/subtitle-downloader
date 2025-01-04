@@ -257,7 +257,7 @@ public class SubtitleScraper {
             
             string url = seasonAnchor.GetAttribute("href") ?? "";
             if (url.StartsWith("/download/")) {
-                season.wholeDownload = true;
+                season.hasPack = true;
                 season.packageDownloadUrl = url;
             }
             seasons.Add(season);
@@ -423,11 +423,11 @@ public class Season {
     public int number;
     public List<Episode> episodes = new();
 
-    public bool wholeDownload;
+    public bool hasPack;
     public string packageDownloadUrl = "";
 
     public override string ToString() {
-        if (wholeDownload) {
+        if (hasPack) {
             return $"S{number} {DOMAIN}{packageDownloadUrl}";
         }
         return $"S{number}";

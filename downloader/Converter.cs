@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using System.Text;
 
 namespace subtitle_downloader.downloader;
 
@@ -244,8 +243,6 @@ public class Converter {
     }
 
     public static (SubtitleFile, Exception?) parseSRT(StreamReader reader) {
-        Stopwatch sw = new Stopwatch();
-        sw.Start();
         var subtitles = new List<Subtitle>(2048);
 
         SubtitleException? parsingException = null;
@@ -274,8 +271,6 @@ public class Converter {
             var sub = new Subtitle(start, end, content);
             subtitles.Add(sub);
         }
-        sw.Stop();
-        Console.WriteLine("Elapsed={0}ms", sw.ElapsedMilliseconds);
         return (new SubtitleFile("srt", subtitles), parsingException);
     }
 

@@ -17,8 +17,11 @@ class ProgramFlow {
             processSubtitle(args.subtitlePath);
             return;
         }
+
+        List<Production> productions = fetchProductions();
+        Production prod = chooseProduction(productions);
+        List<string> paths = fetchSubtitle(prod);
         
-        List<string> paths = fetchSubtitle();
         ensureModificationsRequested();
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
@@ -58,8 +61,8 @@ class ProgramFlow {
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
         Converter.serialize(subtitleFile, path, newExtension);
     }
-    
-    private List<string> fetchSubtitle() {
+
+    private List<Production> fetchProductions() {
         List<Production> suggested = api.getSuggestedMovies(args.title);
         if (suggested.Count == 0) {
             Console.WriteLine("No suggested productions found, falling back to search");
@@ -68,8 +71,10 @@ class ProgramFlow {
                 Utils.FailExit("Fallback failed!");
             }
         }
-        
-        Production prod = chooseProduction(suggested);
+        return suggested;
+    }
+    
+    private List<string> fetchSubtitle(Production prod) {
         Console.WriteLine("Selected: " + prod);
         string pageUrl = createSubtitleUrl(args.language, prod.id);
 
@@ -87,7 +92,21 @@ class ProgramFlow {
         if (args.listSeries) {
             prettyPrint(seasons);
         }
-        Episode episode = getRequestedEpisode(seasons, args.season, args.episode);
+
+        Season season = getSeason(seasons, args.season);
+        if (args.downloadPack) {
+            if (!season.hasPack) {
+                Utils.FailExit($"Season number {season.number} has no pack download");
+            }
+
+            var episodeCount = season.episodes.Count;
+            if (episodeCount > MAX_PACK_SIZE) {
+                Utils.FailExit($"This season has {episodeCount} episodes which is more than {MAX_PACK_SIZE}");
+            }
+
+            throw new Exception("Unimplemented pack download");
+        }
+        Episode episode = getEpisode(season, args.episode);
         Console.WriteLine($"\"{episode.name}\" S{args.season} E{episode.number}");
         if (episode.url.Length == 0) {
             Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
@@ -95,7 +114,8 @@ class ProgramFlow {
         return downloadSubtitle(episode.getPageUrl(), episode.name);
     }
 
-    // Returns the full path to the downloaded subtitle file, if there is more than one - returns the first found
+    // This needs to be separated for download, scrape, selection and unzipping
+    // Returns the paths of the downloaded then unzipped files
     private List<string> downloadSubtitle(string pageURL, string? fileName = null) {
         var response = api.fetchHtml(pageURL);
         if (response.isError()) {
@@ -138,30 +158,27 @@ class ProgramFlow {
         return extracted;
     }
 
-    private static Episode getRequestedEpisode(List<Season> seasons, uint seasonNum, uint episodeNum) {
-        int seasonIndex = -1;
-        for (var i = 0; i < seasons.Count; i++) {
-            if (seasons[i].number == seasonNum) {
-                seasonIndex = i;
-                break;
+    private static Season getSeason(List<Season> seasons, uint seasonNum) {
+        foreach (var season in seasons) {
+            if (season.number == seasonNum) {
+                return season;
             }
         }
-        
-        if (seasonIndex == -1) {
-            Utils.FailExit($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
-        }
-
-        Season season = seasons[seasonIndex];
+        Utils.FailExit($"Season {seasonNum} wasn't found in {seasons.Count} seasons scraped");
+        throw new UnreachableException();
+    }
+    
+    private static Episode getEpisode(Season season, uint episodeNum) {
         foreach (var episode in season.episodes) {
             if (episode.number == episodeNum) {
                 return episode;
             }
         }
-
         Utils.FailExit($"Episode {episodeNum} wasn't found in {season.episodes.Count} episodes scraped");
         throw new UnreachableException();
     }
 
+    private const string SEASON_SEPARATOR = "----------------------------------------------";
     private static void prettyPrint(List<Season> seasons) {
         foreach (var season in seasons) {
             int seasonNumber = season.number;
@@ -171,12 +188,12 @@ class ProgramFlow {
                 continue;
             }
 
-            string packInfo = formatPackInfo(season.wholeDownload, episodesCount);
+            string packInfo = formatPackInfo(season.hasPack, episodesCount);
             Console.WriteLine($"Season [{seasonNumber}] Episodes: {episodesCount} {packInfo}");
             foreach (var episode in season.episodes) {
                 Console.WriteLine($"  {episode.number}. {episode.name}");
             }
-            Console.WriteLine("----------------------------------------------");
+            Console.WriteLine(SEASON_SEPARATOR);
         }
     }
 
