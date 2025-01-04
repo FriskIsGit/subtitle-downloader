@@ -277,7 +277,8 @@ public class SubtitleScraper {
                 continue;
             }
 
-            Tag? spanEpisodeNumber = doc.FindFrom("span", tr.StartOffset + 10, Compare.Exact("itemprop", "episodeNumber"));
+            Tag? spanEpisodeNumber = doc.FindFrom("span", tr.StartOffset + 10, 
+                Compare.Exact("itemprop", "episodeNumber"));
             if (spanEpisodeNumber is null) {
                 continue;
             }
@@ -298,7 +299,7 @@ public class SubtitleScraper {
                 var dirtyName = doc.ExtractText(td ?? tr);
                 int dot = dirtyName.IndexOf('.');
                 if (dot != 1) {
-                    episode.name = dirtyName[(dot + 2)..];
+                    episode.name = dirtyName[(dot + 2)..].Trim();
                     seasons[seasonIndex].episodes.Add(episode);
                 }
                 continue;

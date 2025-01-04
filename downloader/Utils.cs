@@ -195,4 +195,9 @@ public class Utils {
         Console.WriteLine(message);
         Environment.Exit(1);
     }
+    
+    public static void OkExit(string message) {
+        Console.WriteLine(message);
+        Environment.Exit(0);
+    }
 }

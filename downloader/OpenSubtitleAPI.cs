@@ -41,11 +41,11 @@ public class OpenSubtitleAPI {
     }
     
     // OpenSubtitles API is quirky
-    public List<Production> searchProductions(Arguments arguments) {
-        StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{arguments.title}");
-        url.Append(arguments.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");
-        if (arguments.year != 0) {
-            url.Append($"/MovieYear-{arguments.year}");
+    public List<Production> searchProductions(Arguments args) {
+        StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{args.title}");
+        url.Append(args.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");
+        if (args.year != 0) {
+            url.Append($"/MovieYear-{args.year}");
         }
         var simpleResponse = fetchHtml(url.ToString());
         if (simpleResponse.isError()) {
@@ -57,7 +57,7 @@ public class OpenSubtitleAPI {
         if (location != null && location.Contains("/imdbid-")) {
             Console.WriteLine("Detected direct redirect!");
         }
-        return SubtitleScraper.scrapeSearchResults(simpleResponse.content, arguments.isMovie);
+        return SubtitleScraper.scrapeSearchResults(simpleResponse.content, args.isMovie);
     }
 
     public static string toSubLanguageID(string language) {
