@@ -77,8 +77,12 @@ class ProgramFlow {
     }
 
     private List<string> fetchSubtitle(string pageUrl) {
+        List<SubtitleRow> subtitles;
+        SubtitleRow bestSubtitle;
         if (args.isMovie) {
-            return downloadSubtitle(pageUrl);
+            subtitles = scrapeSeriesSubtitles(pageUrl);
+            bestSubtitle = selectSubtitle(subtitles, args);
+            return downloadSubtitle(bestSubtitle.getDownloadURL());
         }
         // Series fetching logic
         SimpleResponse seasonsResponse = api.fetchHtml(pageUrl);
@@ -101,20 +105,20 @@ class ProgramFlow {
             if (episodeCount > MAX_PACK_SIZE) {
                 Utils.FailExit($"This season has {episodeCount} episodes which is more than {MAX_PACK_SIZE}");
             }
-
-            throw new Exception("Unimplemented pack download");
+            Console.WriteLine($"Downloading pack from season {season.number} at {season.getPackUrl()}");
+            return downloadSubtitle(season.getPackUrl());
         }
         Episode episode = getEpisode(season, args.episode);
         Console.WriteLine($"\"{episode.name}\" S{args.season} E{episode.number}");
         if (episode.url.Length == 0) {
             Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
         }
-        return downloadSubtitle(episode.getPageUrl(), episode.name);
+        subtitles = scrapeSeriesSubtitles(episode.getPageUrl());
+        bestSubtitle = selectSubtitle(subtitles, args);
+        return downloadSubtitle(bestSubtitle.getDownloadURL());
     }
 
-    // This needs to be separated for download, scrape, selection and unzipping
-    // Returns the paths of the downloaded then unzipped files
-    private List<string> downloadSubtitle(string pageURL, string? fileName = null) {
+    private List<SubtitleRow> scrapeSeriesSubtitles(string pageURL) {
         var response = api.fetchHtml(pageURL);
         if (response.isError()) {
             Utils.FailExit("Failed to download subtitle");
@@ -126,15 +130,14 @@ class ProgramFlow {
         if (rows.Count == 0) {
             Utils.FailExit("No subtitle elements were scraped");
         }
-        SubtitleRow bestSubtitle = selectSubtitle(rows, args);
+        return rows;
+    }
 
-        if (fileName is null) {
-            fileName = bestSubtitle.broadcastTitle;
-        }
-        fileName = Utils.sanitizeFileName(fileName);
+    // Unzipping can be extracted to a separate function potentially
+    // Returns the paths of the downloaded then unzipped files
+    private List<string> downloadSubtitle(string resourceUrl) {
         string outputDir = Utils.correctOutputDirectory(args.outputDirectory);
-        string downloadedZip = outputDir == "." ? fileName + ".zip" : Path.Combine(outputDir, fileName) + ".zip";
-        var download = api.downloadSubtitle(bestSubtitle.getDownloadURL(), downloadedZip);
+        var download = api.downloadSubtitle(resourceUrl, outputDir);
         try {
             download.Wait();
         }
@@ -142,17 +145,19 @@ class ProgramFlow {
             Utils.FailExit(e.Message);
         }
 
-        if (!download.Result) {
+        SimpleDownloadResponse downloaded = download.Result;
+        if (downloaded.isError()) {
             Utils.FailExit("The download failed!");
         }
-        
-        Console.WriteLine("Unzipping " + downloadedZip);
-        List<string> extracted = Utils.unzip(downloadedZip, outputDir);
+
+        var zip = downloaded.filename;
+        Console.WriteLine($"Unzipping {zip}");
+        List<string> extracted = Utils.unzip(zip, outputDir);
         if (extracted.Count == 0) {
             Utils.FailExit("No elements were extracted from the zip file! Is the zip empty?");
         }
         Console.WriteLine("Deleting zip.");
-        File.Delete(downloadedZip);
+        File.Delete(zip);
         return extracted;
     }
 

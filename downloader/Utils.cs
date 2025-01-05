@@ -50,15 +50,6 @@ public class Utils {
 
         return outputDir;
     }
-    
-    public static void unzipFile2(string zipPath, string outputDirectory) {
-        try {
-            System.IO.Compression.ZipFile.ExtractToDirectory(zipPath, outputDirectory);
-        }
-        catch (IOException io) {
-            Console.WriteLine(io.Message);
-        }
-    }
 
     // Extract .zip that contains the subtitle files
     public static List<string> unzip(string zipPath, string outputDirectory) {
@@ -68,9 +59,14 @@ public class Utils {
             if (entry.FullName.EndsWith(".nfo")) {
                 continue;
             }
+            
             string destPath = Path.Combine(outputDirectory, entry.FullName);
-            entry.ExtractToFile(destPath, overwrite: true);
+            string? destinationDir = Path.GetDirectoryName(destPath);
+            if (destinationDir != null) {
+                Directory.CreateDirectory(destinationDir);
+            }
 
+            entry.ExtractToFile(destPath, overwrite: true);
             extracted.Add(destPath);
         }
         return extracted;

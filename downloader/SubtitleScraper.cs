@@ -426,6 +426,10 @@ public class Season {
     public bool hasPack;
     public string packageDownloadUrl = "";
 
+    public string getPackUrl() {
+        return $"{DOMAIN}{packageDownloadUrl}";
+    }
+    
     public override string ToString() {
         if (hasPack) {
             return $"S{number} {DOMAIN}{packageDownloadUrl}";

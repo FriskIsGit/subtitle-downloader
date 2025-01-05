@@ -10,8 +10,8 @@ public class OpenSubtitleAPI {
     private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
     private const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130";
 
-    private readonly HttpClient client = new() {
-        Timeout = TimeSpan.FromSeconds(60),
+    private readonly HttpClient client = new(new HttpClientHandler { AllowAutoRedirect = true }) {
+        Timeout = TimeSpan.FromSeconds(60)
     };
 
     public List<Production> getSuggestedMovies(string title) {
@@ -107,27 +107,32 @@ public class OpenSubtitleAPI {
         return new SimpleResponse(response.StatusCode, content, url);
     }
     
-    public async Task<bool> downloadSubtitle(string resourceUrl, string zipPath) {
+    public async Task<SimpleDownloadResponse> downloadSubtitle(string resourceUrl, string outputDir) {
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
-        if (response.RequestMessage?.RequestUri is null) {
-            // Should never be here executed
-            return false;
+        string filename = "unknown.zip";
+        ContentDispositionHeaderValue? contentDisposition = response.Content.Headers.ContentDisposition;
+        if (contentDisposition != null && contentDisposition.FileName != null) {
+            filename = Utils.sanitizeFileName(contentDisposition.FileName);
         }
-        
         switch (response.StatusCode) {
             case HttpStatusCode.MovedPermanently:
                 Console.WriteLine("Captcha? (301). Downgrading to HTTP");
                 resourceUrl = downgradeUrl(resourceUrl);
                 break;
+            case HttpStatusCode.NotFound:
+                Console.WriteLine("Received 404 - likely the pack has more than 50 subtitles inside.");
+                return SimpleDownloadResponse.fail(HttpStatusCode.NotFound);
             case HttpStatusCode.TooManyRequests:
                 Console.WriteLine("Too many requests (429)");
                 Console.WriteLine(response.Content);
-                return false;
+                return SimpleDownloadResponse.fail(HttpStatusCode.TooManyRequests);
         }
+
+        var path = Path.Combine(outputDir, filename);
         await using var stream = await client.GetStreamAsync(resourceUrl);
-        await using var fs = new FileStream(zipPath, FileMode.Create);
+        await using var fs = new FileStream(path, FileMode.Create);
         await stream.CopyToAsync(fs);
-        return true;
+        return SimpleDownloadResponse.ok(path);
     }
 
     private static string downgradeUrl(string url) {
@@ -135,7 +140,29 @@ public class OpenSubtitleAPI {
     }
 }
 
-public struct SimpleResponse {
+public readonly struct SimpleDownloadResponse {
+    public readonly string filename;
+    public readonly HttpStatusCode statusCode;
+
+    public SimpleDownloadResponse(string filename, HttpStatusCode code) {
+        this.filename = filename;
+        statusCode = code;
+    }
+    
+    public static SimpleDownloadResponse fail(HttpStatusCode code) {
+        return new SimpleDownloadResponse("", code);
+    }
+    
+    public static SimpleDownloadResponse ok(string filename) {
+        return new SimpleDownloadResponse(filename, HttpStatusCode.OK);
+    }
+
+    public bool isError() {
+        return (int)statusCode >= 400;
+    }
+}
+
+public readonly struct SimpleResponse {
     public readonly HttpStatusCode statusCode;
     public readonly string content;
     public readonly string? lastLocation = null;
