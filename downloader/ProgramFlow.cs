@@ -19,8 +19,10 @@ class ProgramFlow {
         }
 
         List<Production> productions = fetchProductions();
-        Production prod = chooseProduction(productions);
-        List<string> paths = fetchSubtitle(prod);
+        Production production = chooseProduction(productions);
+        Console.WriteLine("Selected - " + production);
+        string pageUrl = production.getPageUrl(args.language);
+        List<string> paths = fetchSubtitle(pageUrl);
         
         ensureModificationsRequested();
         Console.WriteLine($"Processing {paths.Count} path(s)");
@@ -63,25 +65,21 @@ class ProgramFlow {
     }
 
     private List<Production> fetchProductions() {
-        List<Production> suggested = api.getSuggestedMovies(args.title);
-        if (suggested.Count == 0) {
+        List<Production> productions = api.getSuggestedMovies(args.title);
+        if (productions.Count == 0) {
             Console.WriteLine("No suggested productions found, falling back to search");
-            suggested = api.searchProductions(args);
-            if (suggested.Count == 0) {
+            productions = api.searchProductions(args);
+            if (productions.Count == 0) {
                 Utils.FailExit("Fallback failed!");
             }
         }
-        return suggested;
+        return productions;
     }
-    
-    private List<string> fetchSubtitle(Production prod) {
-        Console.WriteLine("Selected: " + prod);
-        string pageUrl = createSubtitleUrl(args.language, prod.id);
 
+    private List<string> fetchSubtitle(string pageUrl) {
         if (args.isMovie) {
             return downloadSubtitle(pageUrl);
         }
-        
         // Series fetching logic
         SimpleResponse seasonsResponse = api.fetchHtml(pageUrl);
         if (seasonsResponse.isError()) {
@@ -90,7 +88,7 @@ class ProgramFlow {
         string seasonsHtml = seasonsResponse.content;
         List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
         if (args.listSeries) {
-            prettyPrint(seasons);
+            prettyPrintSeasons(seasons);
         }
 
         Season season = getSeason(seasons, args.season);
@@ -122,7 +120,7 @@ class ProgramFlow {
             Utils.FailExit("Failed to download subtitle");
         }
         string html = response.content;
-        Console.WriteLine($"Scraping: {pageURL}");
+        Console.WriteLine($"Scraping {pageURL}");
 
         List<SubtitleRow> rows = SubtitleScraper.ScrapeSubtitleTable(html);
         if (rows.Count == 0) {
@@ -136,7 +134,7 @@ class ProgramFlow {
         fileName = Utils.sanitizeFileName(fileName);
         string outputDir = Utils.correctOutputDirectory(args.outputDirectory);
         string downloadedZip = outputDir == "." ? fileName + ".zip" : Path.Combine(outputDir, fileName) + ".zip";
-        var download = api.downloadSubtitle(bestSubtitle, downloadedZip);
+        var download = api.downloadSubtitle(bestSubtitle.getDownloadURL(), downloadedZip);
         try {
             download.Wait();
         }
@@ -179,7 +177,7 @@ class ProgramFlow {
     }
 
     private const string SEASON_SEPARATOR = "----------------------------------------------";
-    private static void prettyPrint(List<Season> seasons) {
+    private static void prettyPrintSeasons(List<Season> seasons) {
         foreach (var season in seasons) {
             int seasonNumber = season.number;
             int episodesCount = season.episodes.Count;
@@ -202,12 +200,6 @@ class ProgramFlow {
             return "";
         }
         return episodes > MAX_PACK_SIZE ? "[PACK TOO BIG]" : "[PACK AVAILABLE]";
-    }
-    
-    private static string createSubtitleUrl(string language, uint prodId) {
-        string languageId = OpenSubtitleAPI.toSubLanguageID(language);
-        // Console.WriteLine("Language id: " + languageId);
-        return $"https://www.opensubtitles.org/en/search/sublanguageid-{languageId}/idmovie-{prodId}";
     }
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {

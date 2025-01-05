@@ -60,14 +60,6 @@ public class OpenSubtitleAPI {
         return SubtitleScraper.scrapeSearchResults(simpleResponse.content, args.isMovie);
     }
 
-    public static string toSubLanguageID(string language) {
-        if (language.Length > 3) {
-            return language[..3];
-        }
-
-        return language;
-    }
-    
     public SimpleResponse fetchJson(string url) {
         var getRequest = new HttpRequestMessage {
             RequestUri = new Uri(url),
@@ -115,8 +107,7 @@ public class OpenSubtitleAPI {
         return new SimpleResponse(response.StatusCode, content, url);
     }
     
-    public async Task<bool> downloadSubtitle(SubtitleRow subtitle, string zipPath) {
-        string resourceUrl = subtitle.getDownloadURL();
+    public async Task<bool> downloadSubtitle(string resourceUrl, string zipPath) {
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
         if (response.RequestMessage?.RequestUri is null) {
             // Should never be here executed

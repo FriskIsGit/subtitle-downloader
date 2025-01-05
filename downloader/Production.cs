@@ -27,6 +27,13 @@ public struct Production {
         return $"{name} ({year}) id:{id} rating:{rating} kind:{kind}";
     }
 
+    public string getPageUrl(string langId) {
+        if (langId.Length > 3) {
+            langId = langId[..3];
+        }
+        return $"https://www.opensubtitles.org/en/search/sublanguageid-{langId}/idmovie-{id}";
+    }
+    
     public static (string title, uint year) ParseTitleYear(string productionName) {
         int newLine = productionName.IndexOf('\n', StringComparison.InvariantCulture);
         if (newLine == -1) {
