@@ -9,6 +9,7 @@
 - `-e` `-E` `--episode` - episode number (required for tv series)
 - `--lang` - specifies subtitle language (kinda required)
 - `-y` `--year` - the year a movie or a tv series was released (optional)
+- `-p` `--pack` - download a season as subtitle pack (not more than 30 episodes)
 - `-ls` `--list` - pretty prints episodes (for TV series)
 - `--filter` - filter subtitles by extension
 - `--skip-select` - automatically select subtitle to download
@@ -40,7 +41,11 @@ Converting a file from disk
 ./subtitles --from "Starship Troopers (1997).vtt" --to srt --shift +4500
 ```
 
-## Building the project
+## Cloning & building the project
+Clone with submodules
+```bash
+git clone --recurse-submodules https://github.com/FriskIsGit/subtitle-downloader
+```
 Run in project's root directory
 ```bash
 dotnet run
