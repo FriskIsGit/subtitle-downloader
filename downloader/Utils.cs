@@ -186,6 +186,16 @@ public class Utils {
 
         return builder;
     }
+    
+    public static uint[] toUIntArray(string[] strings) {
+        var numbers = new uint[strings.Length];
+        for (int i = 0; i < strings.Length; i++) {
+            if (uint.TryParse(strings[i], out uint num)) {
+                numbers[i] = num;
+            }
+        }
+        return numbers;
+    }
 
     public static void FailExit(string message) {
         Console.WriteLine(message);
