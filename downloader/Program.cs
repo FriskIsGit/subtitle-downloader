@@ -21,6 +21,7 @@ class Program {
             Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
+        Console.WriteLine(arguments);
 
         if (arguments.devMode && arguments.devGenerationCount != 0) {
             generateCues(arguments);

@@ -108,14 +108,23 @@ class ProgramFlow {
             Console.WriteLine($"Downloading pack from season {season.number} at {season.getPackUrl()}");
             return downloadSubtitle(season.getPackUrl());
         }
-        Episode episode = getEpisode(season, args.episode);
-        Console.WriteLine($"\"{episode.name}\" S{args.season} E{episode.number}");
-        if (episode.url.Length == 0) {
-            Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
+
+        List<string> paths = new();
+        var epCount = season.episodes.Count;
+        // Resolve it against the actual episodes, know the MAX episode number
+        foreach (var ep in args.episodes) {
+            Episode episode = getEpisode(season, ep);
+            Console.WriteLine($"\"{episode.name}\" S{args.season} E{episode.number}");
+            if (episode.url.Length == 0) {
+                Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
+            }
+            subtitles = scrapeSeriesSubtitles(episode.getPageUrl());
+            bestSubtitle = selectSubtitle(subtitles, args);
+            var downloaded = downloadSubtitle(bestSubtitle.getDownloadURL());
+            paths.AddRange(downloaded);
         }
-        subtitles = scrapeSeriesSubtitles(episode.getPageUrl());
-        bestSubtitle = selectSubtitle(subtitles, args);
-        return downloadSubtitle(bestSubtitle.getDownloadURL());
+
+        return paths;
     }
 
     private List<SubtitleRow> scrapeSeriesSubtitles(string pageURL) {

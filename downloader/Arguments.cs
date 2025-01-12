@@ -42,7 +42,6 @@ public struct Arguments {
     public string convertToExtension = "";
 
     public uint season = 0;
-    public uint episode = 0;
     public List<uint> episodes = new();
     public uint year = 0;
 
@@ -336,15 +335,18 @@ public struct Arguments {
                 for (uint e = range[0]; e <= range[1]; e++) {
                     episodes.Add(e);
                     if (episodes.Count > MAX_DOWNLOADS) {
-                        Utils.FailExit($"The total number of episodes exceeds exceeds {MAX_DOWNLOADS}.");
+                        Utils.FailExit($"The total number of episodes exceeds {MAX_DOWNLOADS}.");
                     }
                 }
                 continue;
             }
 
             if (uint.TryParse(ep, out uint value)) {
-                episodes.Add(value);
                 parsedEpisode = true;
+                episodes.Add(value);
+                if (episodes.Count > MAX_DOWNLOADS) {
+                    Utils.FailExit($"The total number of episodes exceeds {MAX_DOWNLOADS}.");
+                }
             }
             else {
                 Utils.FailExit($"Failed to parse {ep} to an episode number!");
@@ -401,7 +403,7 @@ public struct Arguments {
                     continue;
                 }
 
-                args.episode = episode;
+                args.episodes.Add(episode);
                 args.providedEpisode = true;
 
                 args.isMovie = false;
@@ -490,7 +492,8 @@ public struct Arguments {
                 return false;
             }
 
-            if (episode > MAX_EPISODES) {
+            
+            if (episodes.Any(num => num > MAX_EPISODES)) {
                 Console.WriteLine("Episode number is too large!");
                 return false;
             }
@@ -566,7 +569,7 @@ public struct Arguments {
     // The year must be in brackets because some titles are literally just a number
     public static Arguments FancyParse(string input) {
         string[] parts = input.Split(' ');
-        var subtitle = new Arguments();
+        var args = new Arguments();
         bool parsedProperty = false;
         var title = new StringBuilder(32);
         foreach (var part in parts) {
@@ -591,8 +594,8 @@ public struct Arguments {
                     Console.WriteLine("The year is too short, skipping!");
                     continue;
                 }
-                subtitle.year = uint.Parse(maybeYear);
-                if (subtitle.year < MIN_YEAR) {
+                args.year = uint.Parse(maybeYear);
+                if (args.year < MIN_YEAR) {
                     Console.WriteLine($"The first sound film was projected in {MIN_YEAR}");
                     continue;
                 }
@@ -601,14 +604,14 @@ public struct Arguments {
             }
 
             if ((part.StartsWith('S') || part.StartsWith('s')) && part.Length > 1 && isNumerical(part[1])) {
-                subtitle.season = uint.Parse(part[1..]);
-                subtitle.isMovie = false;
+                args.season = uint.Parse(part[1..]);
+                args.isMovie = false;
                 parsedProperty = true;
                 continue;
             }
             if ((part.StartsWith('E') || part.StartsWith('e')) && part.Length > 1 && isNumerical(part[1])) {
-                subtitle.episode = uint.Parse(part[1..]);
-                subtitle.isMovie = false;
+                args.episodes.Add(uint.Parse(part[1..]));
+                args.isMovie = false;
                 parsedProperty = true;
                 continue;
             }
@@ -621,8 +624,8 @@ public struct Arguments {
             }
         }
 
-        subtitle.title = title.ToString();
-        return subtitle;
+        args.title = title.ToString();
+        return args;
     }
 
     public static void PrintHelp() {
@@ -651,7 +654,7 @@ public struct Arguments {
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be joined with a number (e.g. -S2)");
-        Console.WriteLine("Episode numbers can be provided both as a range and values (comma delimited e.g. -e 1,3-5,7)");
+        Console.WriteLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7)");
         Console.WriteLine("Files converted will have their names updated to match the output format");
         Console.WriteLine("File name provided with flag '--extract' should have an extension & follow any of the three formats: ");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
@@ -701,9 +704,10 @@ public struct Arguments {
             str.Append($"({year}) ");
         }
         if (!isMovie) {
-            str.Append($"S{season} E{episode} ");
+            string ep = episodes.Count > 1 ? "[" + string.Join(",", episodes) + "]" : episodes[0].ToString();
+            str.Append($"S{season} E{ep}");
         }
-        str.Append($"Language:{language}");
+        str.Append($" Language:{language}");
         return str.ToString();
     }
 
