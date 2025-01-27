@@ -14,7 +14,7 @@ class ProgramFlow {
     public void execute() {
         string savedPath;
         if (args.subtitleFromFile) {
-            ensureModificationsRequested();
+            ensureModificationsRequested("No modifications requested!");
             savedPath = processSubtitle(args.subtitlePath);
             Console.WriteLine($"Saved to {savedPath}");
             return;
@@ -26,7 +26,7 @@ class ProgramFlow {
         string pageUrl = production.getPageUrl(args.language);
         List<string> paths = fetchSubtitle(pageUrl);
         
-        ensureModificationsRequested();
+        ensureModificationsRequested($"Saved to {paths[0]}");
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
             savedPath = processSubtitle(path);
@@ -34,9 +34,9 @@ class ProgramFlow {
         }
     }
 
-    private void ensureModificationsRequested() {
+    private void ensureModificationsRequested(string message) {
         if (args.shiftMs == 0 && !args.convert) {
-            Utils.OkExit("Finished");
+            Utils.OkExit(message);
         }
     }
 
