@@ -12,9 +12,11 @@ class ProgramFlow {
     }
 
     public void execute() {
+        string savedPath;
         if (args.subtitleFromFile) {
             ensureModificationsRequested();
-            processSubtitle(args.subtitlePath);
+            savedPath = processSubtitle(args.subtitlePath);
+            Console.WriteLine($"Saved to {savedPath}");
             return;
         }
 
@@ -27,7 +29,8 @@ class ProgramFlow {
         ensureModificationsRequested();
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
-            processSubtitle(path);
+            savedPath = processSubtitle(path);
+            Console.WriteLine($"Saved to {savedPath}");
         }
     }
 
@@ -37,11 +40,11 @@ class ProgramFlow {
         }
     }
 
-    private void processSubtitle(string path) {
+    private string processSubtitle(string path) {
         string originalExtension = Utils.GetExtension(path);
         if (args.shiftMs == 0 && args.convertToExtension == originalExtension) {
             Console.WriteLine("Nothing to do, yet modifications were requested!");
-            return;
+            return path;
         }
         
         // Read subtitle file and parse
@@ -61,7 +64,7 @@ class ProgramFlow {
 
         string newExtension = args.convert ? args.convertToExtension : originalExtension;
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
-        Converter.serialize(subtitleFile, path, newExtension);
+        return Converter.serialize(subtitleFile, path, newExtension);
     }
 
     private List<Production> fetchProductions() {
@@ -218,7 +221,7 @@ class ProgramFlow {
 
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
         sortSubtitleByDownloads(rows);
-        return args.skipSelect
+        return args.autoSelect
             ? selectBestSubtitle(rows, args.extensionFilter)
             : userSelectsSubtitle(rows, args.extensionFilter);
     }

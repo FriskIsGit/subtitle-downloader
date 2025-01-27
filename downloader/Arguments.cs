@@ -10,7 +10,8 @@ public struct Arguments {
     private static readonly string[] LANGUAGE_FLAGS = { "--lang" };
     private static readonly string[] EXTENSION_FILTER_FLAGS = { "--filter" };
     private static readonly string[] LIST_FLAGS = { "-ls", "--list" };
-    private static readonly string[] SKIP_SELECT_FLAGS = { "--skip-select" };
+    private static readonly string[] AUTO_SELECT_FLAGS = { "--auto-select", "-auto" };
+    private static readonly string[] RENAME_FLAGS = { "--rename" };
     private static readonly string[] EXTRACT_ARGS_FLAGS = { "--extract" };
     private static readonly string[] FROM_SUBTITLE_FLAGS = { "--from", "--subtitle" };
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
@@ -53,7 +54,7 @@ public struct Arguments {
 
     public bool isMovie = true;
     public bool listSeries = false;
-    public bool skipSelect = false;
+    public bool autoSelect = false;
 
     private bool providedSeason = false;
     private bool providedEpisode = false;
@@ -198,8 +199,8 @@ public struct Arguments {
                 continue;
             }
 
-            if (EqualsAny(currentArg, SKIP_SELECT_FLAGS)) {
-                arguments.skipSelect = true;
+            if (EqualsAny(currentArg, AUTO_SELECT_FLAGS)) {
+                arguments.autoSelect = true;
                 continue;
             }
 
@@ -643,7 +644,7 @@ public struct Arguments {
         Console.WriteLine(formatOption(YEAR_FLAGS, "[OPTIONAL] Year number of a movie or tv series"));
         Console.WriteLine(formatOption(LIST_FLAGS, "[OPTIONAL] Pretty print seasons and episodes"));
         Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "[OPTIONAL] Filter subtitles by extension"));
-        Console.WriteLine(formatOption(SKIP_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
+        Console.WriteLine(formatOption(AUTO_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
         Console.WriteLine(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
         Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));

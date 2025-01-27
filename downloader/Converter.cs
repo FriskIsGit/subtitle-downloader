@@ -409,9 +409,10 @@ public class Converter {
         return content.ToString();
     }
 
-    public static void serialize(SubtitleFile subtitleFile, string path, string toExtension) {
+    // Serializes a subtitle file to the given extension returning the path where it was stored
+    public static string serialize(SubtitleFile subtitleFile, string path, string toExtension) {
         string newName = Path.GetFileNameWithoutExtension(path) + "_modified" + '.' + toExtension;
-        Console.WriteLine("New name: " + newName);
+        string newPath = Path.Join(Path.GetDirectoryName(path), newName);
 
         string fromFormat = subtitleFile.format;
         if (fromFormat.StartsWith("mpl") || fromFormat.StartsWith("tmp")) {
@@ -427,14 +428,14 @@ public class Converter {
                     // maybe this is not even necessary
                     subtitleFile.stripHtmlTags();
                 }
-                serializeToSRT(subtitleFile.subtitles, newName);
-                return;
+                serializeToSRT(subtitleFile.subtitles, newPath);
+                return newPath;
             case "vtt":
-                serializeToVTT(subtitleFile.subtitles, newName);
-                return;
+                serializeToVTT(subtitleFile.subtitles, newPath);
+                return newPath;
         }
         Utils.FailExit("Unsupported extension: " + toExtension);
-        throw new Exception("UNREACHABLE");
+        return "";
     }
 
     private static readonly byte[] DOUBLE_NEW_LINE = "\n\n"u8.ToArray();

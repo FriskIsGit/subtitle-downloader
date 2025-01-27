@@ -1,7 +1,7 @@
 ﻿namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.7.1";
+    public const string VERSION = "1.7.2";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:
@@ -53,7 +53,8 @@ class Program {
         if (arguments.convert) {
             Console.WriteLine("Serializing!");
             var file = new SubtitleFile("", subtitles);
-            Converter.serialize(file, "gen",  extension);
+            string path = Converter.serialize(file, "gen",  extension);
+            Console.WriteLine($"Saved to {path}");
         }
     }
 }
