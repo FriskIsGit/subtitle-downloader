@@ -1,8 +1,10 @@
 ﻿using System.Text;
+using static subtitle_downloader.downloader.ParsingException;
 
 namespace subtitle_downloader.downloader;
 
 public class Converter {
+    private const int SUBTITLE_CAPACITY = 1024;
     /*
      Each subtitle has four parts in the SRT file.
        1. A numeric counter indicating the number or position of the subtitle.
@@ -138,30 +140,41 @@ public class Converter {
         return int.TryParse(startFrame, out _) && int.TryParse(endFrame, out _);
     }
     
+    // Parsing will not preserve REGION, NOTE or STYLE definition blocks
     private static (SubtitleFile, Exception?) parseVTT(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
 
         string? vttMarker = reader.ReadLine();
         if (vttMarker != "WEBVTT") {
             var file = new SubtitleFile("vtt", subtitles);
-            return (file, new SubtitleException("No VTT marker, aborting!"));
+            return (file, new SubtitleException(VTT_NO_MARKER));
         }
         string? emptyLine = reader.ReadLine();
         while (!reader.EndOfStream) {
-            string? timestamps = reader.ReadLine();
-            if (string.IsNullOrWhiteSpace(timestamps) || timestamps.Length == 1) {
-                // since there's no marker for subtitle chunks we must quit on timestamps
+            // Skip any possible cue identifiers or definition blocks
+            string? line = reader.ReadLine();
+            if (string.IsNullOrEmpty(line)) {
+                // No WebVTT cue identifier
                 var file = new SubtitleFile("vtt", subtitles);
                 return (file, null);
             }
 
-            var (start, end, exception) = parseTimestamps(timestamps, false);
+            if (line.StartsWith("NOTE") || line.StartsWith("REGION") || line.StartsWith("STYLE")) {
+                forwardReaderUntilEmptyLine(reader);
+                continue;
+            }
+            var (start, end, exception) = parseTimestamps(line, false);
             if (exception != null) {
+                ParsingException type = exception.type;
+                if (type == TIMESTAMPS_TOO_SHORT || type == NO_TIMECODE_SEPARATOR) {
+                    // Likely there's some marker on top of the timestamps
+                    continue;
+                }
                 var file = new SubtitleFile("vtt", subtitles);
                 return (file, exception);
             }
             if (start == null || end == null) {
-                throw new SubtitleException("Illegal State: One of the timestamps is null");
+                throw new SubtitleException(NULL_TIMESTAMP);
             }
 
             string content = parseSubtitleContent(reader);
@@ -174,7 +187,7 @@ public class Converter {
 
 
     public static (SubtitleFile, Exception?) parseMPL(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
         while (!reader.EndOfStream) {
             string? line = reader.ReadLine();
             if (string.IsNullOrEmpty(line)) {
@@ -209,7 +222,7 @@ public class Converter {
     
     public static int FPS = 25;
     public static (SubtitleFile, Exception?) parseMPL2(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
         while (!reader.EndOfStream) {
             string? line = reader.ReadLine();
             if (string.IsNullOrEmpty(line)) {
@@ -243,18 +256,18 @@ public class Converter {
     }
 
     public static (SubtitleFile, Exception?) parseSRT(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
 
         SubtitleException? parsingException = null;
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
             if (!int.TryParse(counter, out _)) {
-                parsingException = new SubtitleException("Expected numerical counter");
+                parsingException = new SubtitleException(SRT_NO_NUMERICAL_COUNTER);
                 break;
             }
             string? timestamps = reader.ReadLine();
             if (timestamps == null) {
-                parsingException = new SubtitleException("Expected SRT timestamps [start --> end]");
+                parsingException = new SubtitleException(NO_TIMESTAMPS);
                 break;
             }
 
@@ -264,7 +277,7 @@ public class Converter {
                 break;
             }
             if (start == null || end == null) {
-                throw new SubtitleException("Illegal State: One of the timestamps is null");
+                throw new SubtitleException(NULL_TIMESTAMP);
             }
 
             string content = parseSubtitleContent(reader);
@@ -275,7 +288,7 @@ public class Converter {
     }
 
     public static (SubtitleFile, Exception?) parseTimeBased(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
 
         SubtitleException? exception = null;
         bool firstCue = true;
@@ -294,16 +307,16 @@ public class Converter {
                 continue;
             }
             if (!int.TryParse(split[0], out int hours)) {
-                exception = new SubtitleException("Invalid TMP timestamp, failed to parse hours");
+                exception = new SubtitleException(INVALID_HOURS_TIMESTAMP);
                 break;
             }
             
             if (!int.TryParse(split[1], out int minutes)) {
-                exception = new SubtitleException("Invalid TMP timestamp, failed to parse minutes");
+                exception = new SubtitleException(INVALID_MINUTES_TIMESTAMP);
                 break;
             }
             if (!int.TryParse(split[2], out int seconds)) {
-                exception = new SubtitleException("Invalid TMP timestamp, failed to parse seconds");
+                exception = new SubtitleException(INVALID_SECONDS_TIMESTAMP);
                 break;
             }
 
@@ -321,11 +334,11 @@ public class Converter {
             secondLast.end = sub.start.copy();
 
         }
-        return (new SubtitleFile("srt", subtitles), exception);
+        return (new SubtitleFile("tmp", subtitles), exception);
     }
 
     public static (SubtitleFile, SubtitleException?) parseSubStationAlpha(StreamReader reader) {
-        var subtitles = new List<Subtitle>(2048);
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
         // Skip until [Events] section
         bool foundEventsSection = false;
         while (!reader.EndOfStream) {
@@ -341,7 +354,7 @@ public class Converter {
         }
 
         if (!foundEventsSection) {
-            return (new SubtitleFile("ssa", subtitles), new SubtitleException("[Events] section not found"));
+            return (new SubtitleFile("ssa", subtitles), new SubtitleException(SSA_NO_EVENTS_SECTION));
         }
 
         SubtitleException? parsingException = null;
@@ -367,7 +380,7 @@ public class Converter {
             }
 
             if (textStart < 0) {
-                parsingException = new SubtitleException("Dialogue 9th comma is missing");
+                parsingException = new SubtitleException(SSA_INVALID_DIALOGUE, "9th comma is missing: " + line);
                 break;
             }
             string[] parts = line[10..textStart].Split(",");
@@ -487,15 +500,24 @@ public class Converter {
         }
     }
 
+    private static void forwardReaderUntilEmptyLine(StreamReader reader) {
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (string.IsNullOrEmpty(line)) {
+                return;
+            }
+        }
+    }
+
     private static (Timecode?, Timecode?, SubtitleException?) parseTimestamps(string timestamps, bool srt) {
         if (timestamps.Length < 23) {
             // minimal VTT timestamps length "01:11.111 --> 01:22.222".Length
-            return (null, null, new SubtitleException("The timestamps are too short: " + timestamps));
+            return (null, null, new SubtitleException(TIMESTAMPS_TOO_SHORT, timestamps));
         }
 
         int separator = timestamps.IndexOf(" --> ", StringComparison.Ordinal);
         if (separator == -1) {
-            return (null, null, new SubtitleException("No timecode separator found: " + timestamps));
+            return (null, null, new SubtitleException(NO_TIMECODE_SEPARATOR, timestamps));
         }
 
         string startStamp = timestamps[..separator];
@@ -517,54 +539,55 @@ public class Converter {
     private static (Timecode?, SubtitleException?) fromSsaTimestamp(string timestamp) {
         int dot = timestamp.IndexOf('.');
         if (dot == -1) {
-            return (null, new SubtitleException("No centiseconds, expected a value in range [00, 99]"));
+            return (null, new SubtitleException(NO_CENTISECONDS_TIMESTAMP, "Expected a value in range [00, 99]"));
         }
         string[] split = timestamp[..dot].Split(':');
         
         if (!int.TryParse(split[0], out int hours)) {
-            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse hours"));
+            return (null, new SubtitleException(INVALID_HOURS_TIMESTAMP, timestamp));
         }
 
         if (!int.TryParse(split[1], out int minutes)) {
-            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse minutes"));
+            return (null, new SubtitleException(INVALID_MINUTES_TIMESTAMP, timestamp));
         }
         
         if (!int.TryParse(split[2], out int seconds)) {
-            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse seconds"));
+            return (null, new SubtitleException(INVALID_SECONDS_TIMESTAMP, timestamp));
         }
         
         if (!int.TryParse(timestamp[(dot+1)..], out int centiseconds) || centiseconds > 99) {
-            return (null, new SubtitleException("Invalid SSA timestamp, failed to parse centiseconds"));
+            return (null, new SubtitleException(INVALID_CENTISECONDS_TIMESTAMP, timestamp));
         }
         
         return (new Timecode(hours, minutes, seconds, centiseconds * 10), null);
     }
 
     private static (Timecode?, SubtitleException?) fromSrtTimestamp(string timestamp) {
+        timestamp = timestamp.Trim();
         string[] split = timestamp.Split(':');
         if (split.Length != 3) {
-            return (null, new SubtitleException("Invalid timestamp, not a triple split"));
+            return (null, new SubtitleException(INVALID_TIMESTAMP, "Not a triple split: " + timestamp));
         }
 
         if (!int.TryParse(split[0], out int hours)) {
-            return (null, new SubtitleException("Invalid timestamp, failed to parse hours"));
+            return (null, new SubtitleException(INVALID_HOURS_TIMESTAMP, timestamp));
         }
 
         if (!int.TryParse(split[1], out int minutes)) {
-            return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
+            return (null, new SubtitleException(INVALID_MINUTES_TIMESTAMP, timestamp));
         }
 
         string[] subSplit = split[2].Split(',');
         if (subSplit.Length != 2) {
-            return (null, new SubtitleException("Invalid sub stamp, not a double split"));
+            return (null, new SubtitleException(INVALID_TIMESTAMP, "Not a double split on comma: " + timestamp));
         }
 
         if (!int.TryParse(subSplit[0], out int seconds)) {
-            return (null, new SubtitleException("Invalid timestamp, failed to parse seconds"));
+            return (null, new SubtitleException(INVALID_SECONDS_TIMESTAMP, timestamp));
         }
 
         if (!int.TryParse(subSplit[1], out int milliseconds)) {
-            return (null, new SubtitleException("Invalid timestamp, failed to parse milliseconds"));
+            return (null, new SubtitleException(INVALID_MILLISECONDS_TIMESTAMP, timestamp));
         }
 
         return (new Timecode(hours, minutes, seconds, milliseconds), null);
@@ -572,12 +595,14 @@ public class Converter {
 
     // Timecode hours are optional
     private static (Timecode?, SubtitleException?) fromVttTimestamp(string timestamp) {
+        timestamp = timestamp.Trim();
         int dot = timestamp.IndexOf('.');
         if (dot == -1) {
-            return (null, new SubtitleException("Invalid timestamp, fractional values must be preceded by a dot"));
+            return (null, new SubtitleException(INVALID_TIMESTAMP, "Fractional values must be preceded by a dot: " + timestamp));
         }
-        if (!int.TryParse(timestamp[(dot+1)..], out int milliseconds)) {
-            return (null, new SubtitleException("Invalid timestamp, failed to parse milliseconds"));
+        // Additional trailing details are cut off:    00:20.000 region:fred align:left
+        if (dot+4 > timestamp.Length || !int.TryParse(timestamp[(dot+1)..(dot+4)], out int milliseconds)) {
+            return (null, new SubtitleException(INVALID_MILLISECONDS_TIMESTAMP, timestamp));
         }
 
         string baseStamp = timestamp[..dot];
@@ -587,27 +612,27 @@ public class Converter {
         switch (split.Length) {
             case 2:
                 if (!int.TryParse(split[0], out minutes)) {
-                    return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
+                    return (null, new SubtitleException(INVALID_MINUTES_TIMESTAMP, timestamp));
                 }
                 if (!int.TryParse(split[1], out seconds)) {
-                    return (null, new SubtitleException("Invalid timestamp, failed to parse seconds"));
+                    return (null, new SubtitleException(INVALID_SECONDS_TIMESTAMP, timestamp));
                 }
                 return (new Timecode(0, minutes, seconds, milliseconds), null);
             case 3:
                 if (!int.TryParse(split[0], out int hours)) {
-                    return (null, new SubtitleException("Invalid timestamp, failed to parse hours"));
+                    return (null, new SubtitleException(INVALID_HOURS_TIMESTAMP, timestamp));
                 }
                 if (!int.TryParse(split[1], out minutes)) {
-                    return (null, new SubtitleException("Invalid timestamp, failed to parse minutes"));
+                    return (null, new SubtitleException(INVALID_MINUTES_TIMESTAMP, timestamp));
                 }
                 if (!int.TryParse(split[2], out seconds)) {
-                    return (null, new SubtitleException("Invalid timestamp, failed to parse seconds"));
+                    return (null, new SubtitleException(INVALID_SECONDS_TIMESTAMP, timestamp));
                 }
 
                 Timecode timecode = new Timecode(hours, minutes, seconds, milliseconds);
                 return (timecode, null);
         }
-        return (null, new SubtitleException("Invalid timestamp, expected either a 2-split or a 3-split"));
+        return (null, new SubtitleException(INVALID_TIMESTAMP, "Expected either a 2-split or a 3-split: " + timestamp));
     }
 }
 
@@ -839,6 +864,41 @@ public class Timecode {
 }
 
 public class SubtitleException : Exception {
-    public SubtitleException() {}
-    public SubtitleException(string message) : base(message) {}
+    public readonly ParsingException type;
+
+    public SubtitleException() {
+        type = UNKNOWN;
+    }
+
+    private static string formatMessage(ParsingException type, string msg) {
+        if (string.IsNullOrEmpty(msg)) {
+            return type.ToString();
+        }
+
+        return type + ": " + msg;
+    }
+
+    public SubtitleException(ParsingException exception, string msg = "") : base(formatMessage(exception, msg)) {
+        type = exception;
+    }
+}
+
+public enum ParsingException {
+    VTT_NO_MARKER, 
+    SRT_NO_NUMERICAL_COUNTER, 
+    
+    INVALID_TIMESTAMP,
+    
+    INVALID_HOURS_TIMESTAMP,
+    INVALID_MINUTES_TIMESTAMP,
+    INVALID_SECONDS_TIMESTAMP,
+    INVALID_MILLISECONDS_TIMESTAMP,
+    INVALID_CENTISECONDS_TIMESTAMP,
+    NO_CENTISECONDS_TIMESTAMP,
+
+    SSA_NO_EVENTS_SECTION,
+    SSA_INVALID_DIALOGUE,
+    
+    TIMESTAMPS_TOO_SHORT, NO_TIMECODE_SEPARATOR, NO_TIMESTAMPS, NULL_TIMESTAMP, 
+    UNKNOWN
 }
