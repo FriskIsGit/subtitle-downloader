@@ -708,7 +708,10 @@ public struct Arguments {
             string ep = episodes.Count > 1 ? "[" + string.Join(",", episodes) + "]" : episodes[0].ToString();
             str.Append($"S{season} E{ep}");
         }
-        str.Append($"Language:{language}");
+
+        if (!subtitleFromFile) {
+            str.Append($"Language:{language}");
+        }
         return str.ToString();
     }
 

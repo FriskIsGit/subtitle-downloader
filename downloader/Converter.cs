@@ -145,11 +145,11 @@ public class Converter {
         var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
 
         string? vttMarker = reader.ReadLine();
-        if (vttMarker != "WEBVTT") {
+        if (vttMarker == null || !vttMarker.StartsWith("WEBVTT")) {
             var file = new SubtitleFile("vtt", subtitles);
             return (file, new SubtitleException(VTT_NO_MARKER));
         }
-        string? emptyLine = reader.ReadLine();
+        forwardReaderUntilEmptyLine(reader);
         while (!reader.EndOfStream) {
             // Skip any possible cue identifiers or definition blocks
             string? line = reader.ReadLine();
@@ -261,6 +261,9 @@ public class Converter {
         SubtitleException? parsingException = null;
         while (!reader.EndOfStream) {
             string? counter = reader.ReadLine();
+            if (Utils.isNullOrEmptyOrZWNBSP(counter)) {
+                break;
+            }
             if (!int.TryParse(counter, out _)) {
                 parsingException = new SubtitleException(SRT_NO_NUMERICAL_COUNTER);
                 break;

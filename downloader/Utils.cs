@@ -197,6 +197,10 @@ public class Utils {
         return numbers;
     }
 
+    public static bool isNullOrEmptyOrZWNBSP(string? str) {
+        return string.IsNullOrEmpty(str) || str[0] == '\uFEFF';
+    }
+    
     public static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);

@@ -63,6 +63,7 @@ class ProgramFlow {
         }
 
         string newExtension = args.convert ? args.convertToExtension : originalExtension;
+        // Handle 0 cues
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
         return Converter.serialize(subtitleFile, path, newExtension);
     }
