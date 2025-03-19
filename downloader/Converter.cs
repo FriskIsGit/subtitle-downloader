@@ -49,6 +49,9 @@ public class Converter {
                     return parseSubStationAlpha(reader);
                 case "tmp":
                     return parseTimeBased(reader);
+                case "whisper_jax":
+                case "whisper":
+                    return parseWhisper(reader);
             }
 
             Utils.FailExit("Unsupported extension: " + extension);
@@ -92,7 +95,10 @@ public class Converter {
         if (hasTMPStructure(firstLine)) {
             return "tmp";
         }
-        
+
+        if (hasWhisperStructure(firstLine)) {
+            return "whisper";
+        }
         return null;
     }
     
@@ -106,6 +112,10 @@ public class Converter {
     
     private static bool hasSSAStructure(string line) {
         return line.StartsWith('[') && line.EndsWith(']');
+    }
+    
+    private static bool hasWhisperStructure(string line) {
+        return line.StartsWith('[') && line.Contains("-->") && line.Contains(']');
     }
 
     private static bool hasMPLStructure(string line, int version) {
@@ -340,6 +350,45 @@ public class Converter {
         return (new SubtitleFile("tmp", subtitles), exception);
     }
 
+    public static (SubtitleFile, Exception?) parseWhisper(StreamReader reader) {
+        var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
+        
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (line == null) {
+                break;
+            }
+            if (string.IsNullOrEmpty(line) || !line.StartsWith("[")) {
+                continue;
+            }
+
+            int close = line.IndexOf("]", StringComparison.Ordinal);
+            if (close == -1) {
+                continue;
+            }
+            string timestamps = line[1..close];
+            var (start, end, exception) = parseTimestamps(timestamps, false);
+            if (exception != null) {
+                ParsingException type = exception.type;
+                if (type == TIMESTAMPS_TOO_SHORT || type == NO_TIMECODE_SEPARATOR) {
+                    continue;
+                }
+                var file = new SubtitleFile("whisper", subtitles);
+                return (file, exception);
+            }
+            if (start == null || end == null) {
+                throw new SubtitleException(NULL_TIMESTAMP);
+            }
+
+            if (close + 2 < line.Length) {
+                string content = line[(close + 2)..];
+                var sub = new Subtitle(start, end, content);
+                subtitles.Add(sub);
+            }
+        }
+        return (new SubtitleFile("whisper", subtitles), null);
+    }
+    
     public static (SubtitleFile, SubtitleException?) parseSubStationAlpha(StreamReader reader) {
         var subtitles = new List<Subtitle>(SUBTITLE_CAPACITY);
         // Skip until [Events] section

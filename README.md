@@ -67,6 +67,7 @@ dotnet run
 | MPL2     | ✔️      | ️              |
 | SSA      | ✔️      | ️              |
 | TMP      | ✔️      | ️              |
+| WHISPER  | ✔️      | ️              |
 
 
 ## Fixing bad encoding
