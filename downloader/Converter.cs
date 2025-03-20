@@ -381,7 +381,7 @@ public class Converter {
             }
 
             if (close + 2 < line.Length) {
-                string content = line[(close + 2)..];
+                string content = line[(close + 2)..].Trim();
                 var sub = new Subtitle(start, end, content);
                 subtitles.Add(sub);
             }
