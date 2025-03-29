@@ -703,6 +703,20 @@ public class SubtitleFile {
             sub.shiftBy(ms);
         }
     }
+
+    public int removeEmptySubtitles() {
+        var cleanSubtitles = new List<Subtitle>(subtitles.Count);
+        int empties = 0;
+        foreach (Subtitle sub in subtitles) {
+            if (Utils.isEmpty(sub.content)) {
+                empties++;
+                continue;
+            }
+            cleanSubtitles.Add(sub);
+        }
+        subtitles = cleanSubtitles;
+        return empties;
+    }
     
     public void stripHtmlTags() {
         foreach (Subtitle sub in subtitles) {

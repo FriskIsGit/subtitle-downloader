@@ -17,12 +17,13 @@ public struct Arguments {
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out" };
+    private static readonly string[] CLEANUP_FLAGS = { "--clean", "--cleanup"};
     private static readonly string[] HELP_FLAGS = { "-h", "-help", "--help" };
     private static readonly string[] DEV_GEN_FLAGS = { "--gen" };
 
     private static readonly string[] SUBTITLE_FORMATS = {
         "srt", "ssa", "vtt", "aqt", "gsub", "jss", "sub", "ttxt", "pjs",
-        "psb", "rt", "smi", "stl", "ssf", "ass", "sbv", "usf", "idx"
+        "psb", "rt",  "smi", "stl", "ssf", "ass", "sbv", "usf", "idx"
     };
 
     private const int MIN_YEAR = 1900;
@@ -55,6 +56,7 @@ public struct Arguments {
     public bool isMovie = true;
     public bool listSeries = false;
     public bool autoSelect = false;
+    public bool cleanup = false;
 
     private bool providedSeason = false;
     private bool providedEpisode = false;
@@ -201,6 +203,11 @@ public struct Arguments {
 
             if (EqualsAny(currentArg, AUTO_SELECT_FLAGS)) {
                 arguments.autoSelect = true;
+                continue;
+            }
+            
+            if (EqualsAny(currentArg, CLEANUP_FLAGS)) {
+                arguments.cleanup = true;
                 continue;
             }
 
@@ -651,6 +658,7 @@ public struct Arguments {
         Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
         Console.WriteLine(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
         Console.WriteLine(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
+        Console.WriteLine(formatOption(CLEANUP_FLAGS, "Removes empty subtitles"));
         Console.WriteLine(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");

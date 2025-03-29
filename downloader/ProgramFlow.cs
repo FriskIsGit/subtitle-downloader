@@ -62,6 +62,13 @@ class ProgramFlow {
             subtitleFile.shiftBy(args.shiftMs);
         }
 
+        if (args.cleanup) {
+            int empties = subtitleFile.removeEmptySubtitles();
+            if (empties > 0) {
+                Console.WriteLine($"Removed {empties} subtitle(s) during cleanup.");
+            }
+        }
+        
         string newExtension = args.convert ? args.convertToExtension : originalExtension;
         // Handle 0 cues
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");

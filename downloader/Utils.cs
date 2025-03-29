@@ -201,6 +201,13 @@ public class Utils {
         return string.IsNullOrEmpty(str) || str[0] == '\uFEFF';
     }
     
+    public static bool isEmpty(string str) {
+        foreach (var c in str) {
+            if (!char.IsWhiteSpace(c)) return false;
+        }
+        return true;
+    }
+    
     public static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);
