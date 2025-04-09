@@ -1,7 +1,7 @@
 ﻿namespace subtitle_downloader.downloader;
 
 class Program {
-    public const string VERSION = "1.7.6";
+    public const string VERSION = "1.7.7";
     public static void Main(string[] args) {
         switch (args.Length) {
             case 0:

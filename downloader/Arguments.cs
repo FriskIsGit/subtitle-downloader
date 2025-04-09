@@ -713,7 +713,16 @@ public struct Arguments {
             str.Append($"({year}) ");
         }
         if (!isMovie) {
-            string ep = episodes.Count > 1 ? "[" + string.Join(",", episodes) + "]" : episodes[0].ToString();
+            string ep;
+            if (downloadPack) {
+                ep = "[PACK]";
+            }
+            else if (episodes.Count > 1) {
+                ep = "[" + string.Join(",", episodes) + "]";
+            }
+            else {
+                ep = episodes[0].ToString();
+            }
             str.Append($"S{season} E{ep}");
         }
 
