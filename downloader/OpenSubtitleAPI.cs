@@ -23,7 +23,15 @@ public class OpenSubtitleAPI {
             return productions;
         }
 
-        JsonNode? arrayNode = JsonNode.Parse(response.content);
+        JsonNode? arrayNode;
+        try {
+            arrayNode = JsonNode.Parse(response.content);
+        }
+        catch (System.Text.Json.JsonException e) {
+            Console.WriteLine($"[Rare exception occurred] Suggestions are not a valid JSON: {e.Message}");
+            return productions;
+        }
+        
         if (arrayNode is null) {
             return productions;
         }
