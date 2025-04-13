@@ -27,7 +27,18 @@ class ProgramFlow {
         string pageUrl = production.getPageUrl(args.language);
         List<string> paths = fetchSubtitle(pageUrl);
         
-        ensureModificationsRequested($"Saved to: \n{formatPathsAsList(paths)}");
+        switch (paths.Count) {
+            case 0:
+                Console.WriteLine("No file paths to process!");
+                return;
+            case 1:
+                ensureModificationsRequested($"Saved to {paths[0]}");
+                break;
+            default:
+                ensureModificationsRequested($"Saved to: \n{formatPathsAsList(paths)}");
+                break;
+        }
+
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
             savedPath = processSubtitle(path);
