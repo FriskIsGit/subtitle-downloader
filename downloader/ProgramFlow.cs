@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.Text;
 
 namespace subtitle_downloader.downloader; 
 
@@ -26,12 +27,20 @@ class ProgramFlow {
         string pageUrl = production.getPageUrl(args.language);
         List<string> paths = fetchSubtitle(pageUrl);
         
-        ensureModificationsRequested($"Saved to {paths[0]}");
+        ensureModificationsRequested($"Saved to: \n{formatPathsAsList(paths)}");
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
             savedPath = processSubtitle(path);
             Console.WriteLine($"Saved to {savedPath}");
         }
+    }
+
+    private static string formatPathsAsList(List<string> paths) {
+        StringBuilder format = new StringBuilder();
+        foreach (string path in paths) {
+            format.Append("  ").Append(path).Append('\n');
+        }
+        return format.ToString();
     }
 
     private void ensureModificationsRequested(string message) {
