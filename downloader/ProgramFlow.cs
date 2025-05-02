@@ -124,7 +124,7 @@ class ProgramFlow {
         List<SubtitleRow> subtitles;
         SubtitleRow bestSubtitle;
         if (args.isMovie) {
-            subtitles = scrapeSeriesSubtitles(pageUrl);
+            subtitles = scrapeSubtitles(pageUrl);
             bestSubtitle = selectSubtitle(subtitles, args);
             return downloadSubtitle(bestSubtitle.getDownloadURL());
         }
@@ -162,7 +162,7 @@ class ProgramFlow {
             if (episode.url.Length == 0) {
                 Utils.FailExit("This episode has no subtitles for given language, try again with --lang all");
             }
-            subtitles = scrapeSeriesSubtitles(episode.getPageUrl());
+            subtitles = scrapeSubtitles(episode.getPageUrl());
             bestSubtitle = selectSubtitle(subtitles, args);
             var downloaded = downloadSubtitle(bestSubtitle.getDownloadURL());
             paths.AddRange(downloaded);
@@ -171,7 +171,7 @@ class ProgramFlow {
         return paths;
     }
 
-    private List<SubtitleRow> scrapeSeriesSubtitles(string pageURL) {
+    private List<SubtitleRow> scrapeSubtitles(string pageURL) {
         var response = api.fetchHtml(pageURL);
         if (response.isError()) {
             Utils.FailExit("Failed to download subtitle");
@@ -266,33 +266,37 @@ class ProgramFlow {
     private static SubtitleRow selectSubtitle(List<SubtitleRow> rows, Arguments args) {
         sortSubtitleByDownloads(rows);
         return args.autoSelect
-            ? selectBestSubtitle(rows, args.extensionFilter)
-            : userSelectsSubtitle(rows, args.extensionFilter);
+            ? selectBestSubtitle(rows, args.extensionFilter, args.textToContain)
+            : userSelectsSubtitle(rows, args.extensionFilter, args.textToContain);
     }
 
     private static void sortSubtitleByDownloads(List<SubtitleRow> rows) {
         rows.Sort((e1, e2) => e2.downloads.CompareTo(e1.downloads));
     }
 
-    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> sortedRows, string extension) {
+    private static SubtitleRow userSelectsSubtitle(List<SubtitleRow> sortedRows, string extension, string mustContain) {
         if (sortedRows.Count == 1) {
             Console.WriteLine("Single result, proceeding.");
             return sortedRows[0];
         }
 
-        if (extension != "") {
-            List<SubtitleRow> filtered = new List<SubtitleRow>();
-            foreach (var sub in sortedRows) {
-                // Unknown subtitle formats could be matching
-                if (sub.format == "" || sub.format == extension) {
-                    filtered.Add(sub);
-                }
+        List<SubtitleRow> filtered = new List<SubtitleRow>();
+        foreach (var sub in sortedRows) {
+            // Unknown subtitle formats could be matching
+            bool extensionMatch = extension == "" || sub.format == "" || sub.format == extension;
+            // If filename is empty it is discarded
+            bool filenameMatch = mustContain == "" || sub.baseFilename.Contains(mustContain, StringComparison.InvariantCultureIgnoreCase);
+                
+            if (extensionMatch && filenameMatch) {
+                filtered.Add(sub);
             }
-            if (filtered.Count == 0) {
-                Utils.FailExit("No subtitles remained after filtering by extension=" + extension + " :(");
-            }
-            sortedRows = filtered;
         }
+        if (filtered.Count == 0) {
+            Utils.FailExit("No subtitles remained after filtering by:" +
+                           "\n  extension=" + extension +
+                           "\n  text=" + mustContain);
+        }
+        sortedRows = filtered;
         
         string table = Utils.prettyFormatSubtitlesInTable(sortedRows);
         Console.WriteLine(table);
@@ -322,22 +326,19 @@ class ProgramFlow {
         }
     }
     
-    private static SubtitleRow selectBestSubtitle(List<SubtitleRow> rows, string extension) {
-        bool applyFilter = extension != "";
-        foreach (var subtitle in rows) {
-            if (applyFilter) {
-                if (subtitle.format == extension) {
-                    return subtitle; 
-                }
+    private static SubtitleRow selectBestSubtitle(List<SubtitleRow> subtitles, string extension, string mustContain) {
+        foreach (var sub in subtitles) {
+            if (extension != "" && sub.format != extension) {
                 continue;
             }
-            if (subtitle.format != "" && subtitle.format != "srt") {
+            
+            if (mustContain != "" && sub.baseFilename.Contains(mustContain, StringComparison.InvariantCultureIgnoreCase)) {
                 continue;
             }
-            return subtitle;
+            return sub;
         }
         Console.WriteLine("WARN: Defaulted to first subtitle.");
-        return rows[0];
+        return subtitles[0];
     }
 
     private const bool USER_SELECTS_PRODUCTION = false;
@@ -410,7 +411,7 @@ class ProgramFlow {
 
         // IgnoreCase NAME&YEAR
         foreach (var production in productions) {
-            if (string.Equals(production.name, args.title, StringComparison.CurrentCultureIgnoreCase)
+            if (string.Equals(production.name, args.title, StringComparison.InvariantCultureIgnoreCase)
                 && production.year == args.year) {
                 return production;
             }
@@ -425,7 +426,7 @@ class ProgramFlow {
         
         // just NAME (ignore case)
         foreach (var production in productions) {
-            if (string.Equals(production.name, args.title, StringComparison.CurrentCultureIgnoreCase)) {
+            if (string.Equals(production.name, args.title, StringComparison.InvariantCultureIgnoreCase)) {
                 return production;
             }
         }

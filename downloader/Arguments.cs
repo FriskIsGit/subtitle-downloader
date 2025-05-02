@@ -17,7 +17,7 @@ public struct Arguments {
     private static readonly string[] FROM_SUBTITLE_FLAGS = { "--from", "--subtitle" };
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
-    private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out" };
+    private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out", "-o" };
     private static readonly string[] CLEANUP_FLAGS = { "--clean", "--cleanup"};
     private static readonly string[] HELP_FLAGS = { "-h", "-help", "--help" };
     private static readonly string[] DEV_GEN_FLAGS = { "--gen" };
@@ -117,10 +117,7 @@ public struct Arguments {
                     episodeArg = currentArg[flag.Length..];
                 }
                 else {
-                    bool hasNext = i + 1 < args.Length;
-                    if (!hasNext) {
-                        Utils.FailExit("Episode number expected. Usage: -e <episode or episodes>");
-                    }
+                    EnsureNextArgument("Episode number expected. Usage: -e <episode or episodes>", i, args.Length);
 
                     episodeArg = args[i + 1];
                     i++;
@@ -487,7 +484,6 @@ public struct Arguments {
                 Console.WriteLine("Season number is too large!");
                 return false;
             }
-
             
             if (episodes.Any(num => num > MAX_EPISODES)) {
                 Console.WriteLine("Episode number is too large!");
@@ -633,27 +629,28 @@ public struct Arguments {
         Console.WriteLine($"       {programName} --extract [filename] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of the tv series"));
-        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode numbers of the tv series"));
         Console.WriteLine(formatOption(LANGUAGE_FLAGS, "Subtitle language code (3 letters)"));
         Console.WriteLine(formatOption(YEAR_FLAGS, "Release year of the movie or tv series"));
-        Console.WriteLine(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
         Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "Filter subtitles by extension"));
         Console.WriteLine(formatOption(CONTAINS_FLAGS, "Filter subtitles by text contained in filename"));
         Console.WriteLine(formatOption(AUTO_SELECT_FLAGS, "Automatically selects subtitle to download"));
-        Console.WriteLine(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
         Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
         Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
         Console.WriteLine(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
         Console.WriteLine(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
-        Console.WriteLine(formatOption(CLEANUP_FLAGS, "Removes empty subtitles"));
+        Console.WriteLine(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
         Console.WriteLine(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
+        Console.WriteLine();
+        Console.WriteLine("TV series options:");
+        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of the tv series"));
+        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode numbers of the tv series"));
+        Console.WriteLine(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
+        Console.WriteLine(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
         Console.WriteLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
         Console.WriteLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
-        Console.WriteLine("The converted files will have their names updated to match the specified output format.");
         Console.WriteLine("File name provided with the '--extract' flag should have an extension & follow any of the three formats:");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");

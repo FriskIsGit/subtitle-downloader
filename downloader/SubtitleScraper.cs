@@ -32,7 +32,11 @@ public class SubtitleScraper {
             SubtitleRow subtitleRow = new SubtitleRow {
                 broadcastTitle = doc.ExtractText(anchor)
             };
-            subtitleRow.fixTitle();
+            subtitleRow.broadcastTitle = fixTitle(subtitleRow.broadcastTitle);
+
+            // Extract base filename for filtering distributions HDTV, WEB-DL, Blu-Ray
+            // This could either be within <br> or <span>'s title attribute
+            subtitleRow.baseFilename = extractBaseFilename(doc, html, anchor.EndOffset);
 
             var downloadAnchor = doc.FindFrom("a", anchor.EndOffset + 100, 
                 Compare.KeyAndValuePrefix("href", "/en/subtitleserve"), 
@@ -131,6 +135,28 @@ public class SubtitleScraper {
         return productions;
     }
 
+    // Return base file name or empty
+    private static string extractBaseFilename(HtmlDoc doc, string fullHtml, int offset) {
+        var br1 = doc.FindFrom("br", offset);
+        if (br1 == null) {
+            return "";
+        }
+        var br2 = doc.FindFrom("br", br1.StartOffset + 6);
+        if (br2 == null) {
+            return "";
+        }
+
+        string spanSubString = fullHtml[(br1.StartOffset + 6)..br2.StartOffset];
+        HtmlDoc spanDoc = new HtmlDoc(spanSubString);
+        var titleSpan = spanDoc.Find("span", Compare.Key("title"));
+        if (titleSpan != null) {
+            string? title = titleSpan.GetAttribute("title");
+            return title ?? "";
+        }
+        
+        return fixTitle(spanSubString);
+    }
+    
     private static uint extractUrlId(string url) {
         var idMovie = url.IndexOf("idmovie-", StringComparison.InvariantCulture);
         if (idMovie == -1) {
@@ -319,6 +345,29 @@ public class SubtitleScraper {
 
         return seasons;
     }
+    
+    private static int indexOf(StringBuilder str, char chr) {
+        for (int i = 0; i < str.Length; i++) {
+            if (str[i] == chr) {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+    
+    private static string fixTitle(string title) {
+        StringBuilder fixedTitle = new(title);
+        fixedTitle.Replace('\n', ' ');
+        fixedTitle.Replace("\t", "");
+        int quoteSt = indexOf(fixedTitle, '"');
+        if (quoteSt != -1 && quoteSt + 1 < fixedTitle.Length && fixedTitle[quoteSt + 1] == ' ') {
+            fixedTitle.Remove(quoteSt + 1, 1);
+        }
+        
+        title = fixedTitle.ToString();
+        return title.Trim();
+    }
 
     public static List<Language> ScrapeSubtitleLanguages(string html) {
         HtmlDoc doc = new HtmlDoc(html);
@@ -366,6 +415,7 @@ public class SubtitleRow {
     private const string DOWNLOAD_URL = "https://dl.opensubtitles.org/en/download/sub/";
     // title is either movie name or episode name
     public string broadcastTitle = "";
+    public string baseFilename = "";
     public string format = "";
 
     public string downloadURL = "";
@@ -373,29 +423,6 @@ public class SubtitleRow {
     public ulong downloads;
     public double rating;
 
-    public void fixTitle() {
-        StringBuilder fixedTitle = new(broadcastTitle);
-        fixedTitle.Replace('\n', ' ');
-        fixedTitle.Replace("\t", "");
-        int quoteSt = indexOf(fixedTitle, '"');
-        if (quoteSt != -1 && quoteSt + 1 < fixedTitle.Length && fixedTitle[quoteSt + 1] == ' ') {
-            fixedTitle.Remove(quoteSt + 1, 1);
-        }
-        
-        broadcastTitle = fixedTitle.ToString();
-        broadcastTitle = broadcastTitle.Trim();
-    }
-
-    private static int indexOf(StringBuilder str, char chr) {
-        for (int i = 0; i < str.Length; i++) {
-            if (str[i] == chr) {
-                return i;
-            }
-        }
-
-        return -1;
-    }
-    
     public override string ToString() {
         return $"{broadcastTitle} {getDownloadURL()} format:{format} rating:{rating} downloads:{downloads}";
     }
