@@ -28,7 +28,7 @@ public class OpenSubtitleAPI {
             arrayNode = JsonNode.Parse(response.content);
         }
         catch (System.Text.Json.JsonException e) {
-            Console.WriteLine($"[Rare exception occurred] Suggestions are not a valid JSON: {e.Message}");
+            Console.WriteLine($"[Unusual exception occurred] Suggestions are not a valid JSON: {e.Message}");
             return productions;
         }
         
@@ -48,7 +48,6 @@ public class OpenSubtitleAPI {
         return productions;
     }
     
-    // OpenSubtitles API is quirky
     public List<Production> searchProductions(Arguments args) {
         StringBuilder url = new StringBuilder($"{SUBTITLE_SEARCH}/MovieName-{args.title}");
         url.Append(args.isMovie ? "/SearchOnlyMovies=on" : "/SearchOnlyTVSeries=on");

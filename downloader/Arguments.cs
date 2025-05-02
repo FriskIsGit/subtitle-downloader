@@ -11,7 +11,8 @@ public struct Arguments {
     private static readonly string[] EXTENSION_FILTER_FLAGS = { "--filter" };
     private static readonly string[] LIST_FLAGS = { "-ls", "--list" };
     private static readonly string[] AUTO_SELECT_FLAGS = { "--auto-select", "-auto" };
-    private static readonly string[] RENAME_FLAGS = { "--rename" };
+    private static readonly string[] CONTAINS_FLAGS = { "--contains", "--has" };
+    // private static readonly string[] RENAME_FLAGS = { "--rename" };
     private static readonly string[] EXTRACT_ARGS_FLAGS = { "--extract" };
     private static readonly string[] FROM_SUBTITLE_FLAGS = { "--from", "--subtitle" };
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
@@ -23,7 +24,7 @@ public struct Arguments {
 
     private static readonly string[] SUBTITLE_FORMATS = {
         "srt", "ssa", "vtt", "aqt", "gsub", "jss", "sub", "ttxt", "pjs",
-        "psb", "rt",  "smi", "stl", "ssf", "ass", "sbv", "usf", "idx"
+        "psb", "rt",  "smi", "stl", "ssf", "ass", "sbv", "usf", "idx", "lrc"
     };
 
     private const int MIN_YEAR = 1900;
@@ -37,11 +38,12 @@ public struct Arguments {
     private const int FORWARD_SHIFT_CAP = 12 * 60 * 60 * 1000;
 
     public string title = "";
-    public string language = "all";
+    public string language = "eng";
     public string extensionFilter = "";
     public string outputDirectory = ".";
     public string subtitlePath = "";
     public string convertToExtension = "";
+    public string textToContain = "";
 
     public uint season = 0;
     public List<uint> episodes = new();
@@ -159,10 +161,7 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, LANGUAGE_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("The language argument wasn't provided. Help: --lang <language>");
-                }
+                EnsureNextArgument("The language argument wasn't provided. Help: --lang <language>", i, args.Length);
 
                 arguments.language = args[i + 1];
                 i++;
@@ -170,10 +169,7 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, EXTENSION_FILTER_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("No extension provided. Usage: --filter <extension>");
-                }
+                EnsureNextArgument("No extension provided. Usage: --filter <extension>", i, args.Length);
 
                 string ext = args[i + 1].ToLower();
                 if (ext.Length < 2) {
@@ -191,6 +187,14 @@ public struct Arguments {
                 continue;
             }
 
+            if (EqualsAny(currentArg, CONTAINS_FLAGS)) {
+                EnsureNextArgument("No text was provided. Help: --has <text>", i, args.Length);
+
+                arguments.textToContain = args[i + 1];
+                i++;
+                continue;
+            }
+            
             if (EqualsAny(currentArg, PACK_FLAGS)) {
                 arguments.downloadPack = true;
                 continue;
@@ -212,10 +216,7 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, EXTRACT_ARGS_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("A path to file was expected. Help: --extract <path>");
-                }
+                EnsureNextArgument("A path to file was expected. Help: --extract <path>", i, args.Length);
 
                 string path = args[i + 1];
                 i++;
@@ -224,10 +225,7 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, FROM_SUBTITLE_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("A path to a subtitle file was expected. Help: --from <path>");
-                }
+                EnsureNextArgument("A path to a subtitle file was expected. Help: --from <path>", i, args.Length);
 
                 string path = args[i + 1];
                 i++;
@@ -250,10 +248,7 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, CONVERT_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("A path to a subtitle file was expected. Help: --convert-to <extension>");
-                }
+                EnsureNextArgument("Subtitle extension was expected. Help: --convert-to <extension>", i, args.Length);
 
                 string ext = args[i + 1].ToLower();
                 if (ext.Length < 2) {
@@ -273,14 +268,11 @@ public struct Arguments {
             }
 
             if (EqualsAny(currentArg, OUTPUT_FLAGS)) {
-                bool hasNext = i + 1 < args.Length;
-                if (!hasNext) {
-                    Utils.FailExit("An argument was expected. Help: --out <directory_path>");
-                }
+                EnsureNextArgument("An argument was expected. Help: --out <directory_path>", i, args.Length);
 
                 string outputPath = args[i + 1];
                 i++;
-                arguments.outputDirectory = outputPath;
+                arguments.outputDirectory = Utils.correctDirectoryPath(outputPath);
                 continue;
             }
 
@@ -451,15 +443,11 @@ public struct Arguments {
         args.title = title.ToString();
     }
 
-    private static int countChar(string str, char target) {
-        int count = 0;
-        foreach (var chr in str) {
-            if (chr == target) {
-                count++;
-            }
+    private static void EnsureNextArgument(string errorMsg, int currentIndex, int length) {
+        if (currentIndex + 1 < length) {
+            return;
         }
-
-        return count;
+        Utils.FailExit(errorMsg);
     }
 
     public bool Validate() {
@@ -525,12 +513,7 @@ public struct Arguments {
         }
 
         if (convert && !SUBTITLE_FORMATS.Contains(convertToExtension)) {
-            Console.WriteLine("Subtitle extension doesn't match any existing subtitle formats!");
-            return false;
-        }
-
-        if (!Directory.Exists(outputDirectory)) {
-            Console.WriteLine($"Specified directory does not exist! {outputDirectory}");
+            Console.WriteLine($"Extension '{convertToExtension}' doesn't match any recognized subtitle formats!");
             return false;
         }
 
@@ -636,6 +619,11 @@ public struct Arguments {
         return args;
     }
 
+    public readonly bool requiresModifications(string originalExt = "") {
+        bool mayRequireConverting = convert && (originalExt == "" || convertToExtension != originalExt);
+        return shiftMs != 0 || mayRequireConverting || cleanup;
+    }
+
     public static void PrintHelp() {
         string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
         Console.WriteLine($"Subtitle downloader-converter (OpenSubtitles) v{Program.VERSION}");
@@ -645,13 +633,14 @@ public struct Arguments {
         Console.WriteLine($"       {programName} --extract [filename] [arguments...]");
         Console.WriteLine();
         Console.WriteLine("Options:");
-        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of a tv series"));
-        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode numbers of a tv series"));
+        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of the tv series"));
+        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode numbers of the tv series"));
         Console.WriteLine(formatOption(LANGUAGE_FLAGS, "Subtitle language code (3 letters)"));
-        Console.WriteLine(formatOption(YEAR_FLAGS, "[OPTIONAL] Year number of a movie or tv series"));
-        Console.WriteLine(formatOption(LIST_FLAGS, "[OPTIONAL] Pretty print seasons and episodes"));
-        Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "[OPTIONAL] Filter subtitles by extension"));
-        Console.WriteLine(formatOption(AUTO_SELECT_FLAGS, "[OPTIONAL] Automatically selects subtitle to download"));
+        Console.WriteLine(formatOption(YEAR_FLAGS, "Release year of the movie or tv series"));
+        Console.WriteLine(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
+        Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "Filter subtitles by extension"));
+        Console.WriteLine(formatOption(CONTAINS_FLAGS, "Filter subtitles by text contained in filename"));
+        Console.WriteLine(formatOption(AUTO_SELECT_FLAGS, "Automatically selects subtitle to download"));
         Console.WriteLine(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
         Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
@@ -662,10 +651,10 @@ public struct Arguments {
         Console.WriteLine(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
         Console.WriteLine();
         Console.WriteLine("To display available subtitle languages and their codes use: -languages");
-        Console.WriteLine("Season, episode and year arguments can be joined with a number (e.g. -S2)");
-        Console.WriteLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7)");
-        Console.WriteLine("Files converted will have their names updated to match the output format");
-        Console.WriteLine("File name provided with flag '--extract' should have an extension & follow any of the three formats: ");
+        Console.WriteLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
+        Console.WriteLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
+        Console.WriteLine("The converted files will have their names updated to match the specified output format.");
+        Console.WriteLine("File name provided with the '--extract' flag should have an extension & follow any of the three formats:");
         Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
         Console.WriteLine(" - spaced: Production Name (Year) SxEy");
         Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
@@ -723,11 +712,11 @@ public struct Arguments {
             else {
                 ep = episodes[0].ToString();
             }
-            str.Append($"S{season} E{ep}");
+            str.Append($"S{season} E{ep} ");
         }
 
         if (!subtitleFromFile) {
-            str.Append($"Language:{language}");
+            str.Append($"{language}");
         }
         return str.ToString();
     }

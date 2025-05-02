@@ -13,11 +13,8 @@ class ProgramFlow {
     }
 
     public void execute() {
-        string savedPath;
         if (args.subtitleFromFile) {
-            ensureModificationsRequested("No modifications requested!");
-            savedPath = processSubtitle(args.subtitlePath);
-            Console.WriteLine($"Saved to {savedPath}");
+            convertLocally();
             return;
         }
 
@@ -26,22 +23,19 @@ class ProgramFlow {
         Console.WriteLine("Selected - " + production);
         string pageUrl = production.getPageUrl(args.language);
         List<string> paths = fetchSubtitle(pageUrl);
+
+        if (paths.Count == 0) {
+            Console.WriteLine("No file paths to process! How?");
+            return;
+        }
         
-        switch (paths.Count) {
-            case 0:
-                Console.WriteLine("No file paths to process!");
-                return;
-            case 1:
-                ensureModificationsRequested($"Saved to {paths[0]}");
-                break;
-            default:
-                ensureModificationsRequested($"Saved to: \n{formatPathsAsList(paths)}");
-                break;
+        if (!args.requiresModifications()) {
+            Utils.OkExit(paths.Count == 1 ? $"Saved to {paths[0]}" : $"Saved to: \n{formatPathsAsList(paths)}");
         }
 
         Console.WriteLine($"Processing {paths.Count} path(s)");
         foreach(string path in paths) {
-            savedPath = processSubtitle(path);
+            (string savedPath, _) = processSubtitle(path);
             Console.WriteLine($"Saved to {savedPath}");
         }
     }
@@ -54,17 +48,36 @@ class ProgramFlow {
         return format.ToString();
     }
 
-    private void ensureModificationsRequested(string message) {
-        if (args.shiftMs == 0 && !args.convert) {
-            Utils.OkExit(message);
+    private void convertLocally() {
+        (string savedPath, bool modified) = processSubtitle(args.subtitlePath);
+        string message;
+        if (modified) {
+            if (args.outputDirectory != ".") {
+                savedPath = moveToDestinationDirectory(savedPath, args.outputDirectory);
+            }
+            message = $"Saved to {savedPath}";
         }
+        else {
+            message = "No modifications were done.";
+        }
+        Console.WriteLine(message);
     }
 
-    private string processSubtitle(string path) {
+    private static string moveToDestinationDirectory(string filePath, string outputDir) {
+        string destPath = Path.Combine(outputDir, Path.GetFileName(filePath));
+        string? destinationDir = Path.GetDirectoryName(destPath);
+        if (destinationDir != null) {
+            Directory.CreateDirectory(destinationDir);
+        }
+        File.Move(filePath, destPath);
+        return destPath;
+    }
+    
+    // Returns path of the resulting subtitle and boolean - true if any modifications were performed, false otherwise
+    private (string, bool) processSubtitle(string path) {
         string originalExtension = Utils.GetExtension(path);
-        if (args.shiftMs == 0 && args.convertToExtension == originalExtension) {
-            Console.WriteLine("Nothing to do, yet modifications were requested!");
-            return path;
+        if (!args.requiresModifications(originalExtension)) {
+            return (path, false);
         }
         
         // Read subtitle file and parse
@@ -85,14 +98,14 @@ class ProgramFlow {
         if (args.cleanup) {
             int empties = subtitleFile.removeEmptySubtitles();
             if (empties > 0) {
-                Console.WriteLine($"Removed {empties} subtitle(s) during cleanup.");
+                Console.WriteLine($"Removed {empties} subtitle cue(s) during cleanup.");
             }
         }
         
         string newExtension = args.convert ? args.convertToExtension : originalExtension;
         // Handle 0 cues
         Console.WriteLine($"Serializing {subtitleFile.count()} subtitle chunks to {newExtension}");
-        return Converter.serialize(subtitleFile, path, newExtension);
+        return (Converter.serialize(subtitleFile, path, newExtension), true);
     }
 
     private List<Production> fetchProductions() {
@@ -176,7 +189,10 @@ class ProgramFlow {
     // Unzipping can be extracted to a separate function potentially
     // Returns the paths of the downloaded then unzipped files
     private List<string> downloadSubtitle(string resourceUrl) {
-        string outputDir = Utils.correctOutputDirectory(args.outputDirectory);
+        string outputDir = args.outputDirectory;
+        // This internally checks if directory exists anyway
+        Directory.CreateDirectory(outputDir);
+        
         var download = api.downloadSubtitle(resourceUrl, outputDir);
         try {
             download.Wait();

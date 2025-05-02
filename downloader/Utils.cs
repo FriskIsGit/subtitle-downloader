@@ -41,14 +41,14 @@ public class Utils {
         return ext;
     }
 
-    public static string correctOutputDirectory(string outputDir) {
+    public static string correctDirectoryPath(string dir) {
         bool isWindows = RuntimeInformation.IsOSPlatform(OSPlatform.Windows);
         // C# does not correctly identify drive path as absolute
-        if (isWindows && outputDir.EndsWith(':')) {
-            return outputDir + "/";
+        if (isWindows && dir.EndsWith(':')) {
+            // C: becomes C:/
+            return dir + "/";
         }
-
-        return outputDir;
+        return dir;
     }
 
     // Extract .zip that contains the subtitle files
