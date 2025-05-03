@@ -235,7 +235,9 @@ public class SubtitleScraper {
         var doc = new HtmlDoc(html);
         Tag? tableBody = doc.Find("tbody");
         if (tableBody is null) {
-            throw new Exception("<tbody> not found in the page, how's the page structured?");
+            Console.WriteLine("ERROR: <tbody> not found in the page, dumping html!");
+            Utils.FailExit(html);
+            return new List<Season>();
         }
 
         List<Tag> tableRows = doc.ExtractTags(tableBody, "tr");

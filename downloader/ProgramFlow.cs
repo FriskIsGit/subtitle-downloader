@@ -332,7 +332,7 @@ class ProgramFlow {
                 continue;
             }
             
-            if (mustContain != "" && sub.baseFilename.Contains(mustContain, StringComparison.InvariantCultureIgnoreCase)) {
+            if (mustContain != "" && !sub.baseFilename.Contains(mustContain, StringComparison.InvariantCultureIgnoreCase)) {
                 continue;
             }
             return sub;
