@@ -5,19 +5,24 @@
 - `--from [file name] [options...]`
 
 ## Arguments
-- `-s` `-S` `--season` - season number (required for tv series)
-- `-e` `-E` `--episode` - episode number (required for tv series)
+
 - `--lang` - specifies subtitle language (recommended)
 - `-y` `--year` - the year a movie or a tv series was released (optional)
-- `-p` `--pack` - download a season as subtitle pack (not more than 30 episodes)
-- `-ls` `--list` - pretty prints episodes (for TV series)
 - `--filter` - filter subtitles by extension
-- `--auto-select` - automatically selects subtitle to download (use in scripts)
+- `--contains` `--has` - filter subtitles by text contained in filename
+- `--auto-select` `-auto` - automatically selects subtitle to download (use in scripts)
 - `--from` - read a subtitle file from memory (for editing with **--shift**, **--to**)
 - `--to` `--convert-to` - converts to the specified subtitle format
 - `--shift` - shifts all timestamps by an offset (ms)
 - `--extract` - extracts arguments from a file name
-- `--dest` `--out` - directory where downloaded files are to be placed
+- `--dest` `--out` `-o` - directory where downloaded files are to be placed
+- `--clean` `--cleanup` - remove empty cues
+
+
+- `-s` `-S` `--season` - season number (required for tv series)
+- `-e` `-E` `--episode` - episode number (required for tv series)
+- `-p` `--pack` - download a season as subtitle pack (not more than 30 episodes)
+- `-ls` `--list` - pretty prints episodes (for TV series)
 <details>
 <summary>Dev flags</summary>
 

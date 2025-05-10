@@ -3,22 +3,13 @@
 class Program {
     public const string VERSION = "1.7.9";
     public static void Main(string[] args) {
-        switch (args.Length) {
-            case 0:
-            case 1 when args[0].Equals("-h") || args[0].Equals("-help") || args[0].Equals("--help"):
-                Arguments.PrintHelp();
-                return;
-            case 1 when args[0].Equals("-v") || args[0].StartsWith("--ver"):
-                Console.WriteLine(VERSION);
-                return;
-            case 1 when args[0].Equals("-languages"):
-                Arguments.PrintLanguages();
-                return;
+        if (args.Length == 0) {
+            Arguments.PrintHelp();
+            return;
         }
 
         var arguments = Arguments.Parse(args);
         if (!arguments.Validate()) {
-            Console.WriteLine("Invalid arguments detected. Exiting.");
             return;
         }
         Console.WriteLine(arguments);

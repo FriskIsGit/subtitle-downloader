@@ -3,14 +3,11 @@
 namespace subtitle_downloader.downloader;
 
 public struct Arguments {
-    private static readonly string[] SEASON_FLAGS = { "-s", "-S", "--season" };
-    private static readonly string[] EPISODE_FLAGS = { "-e", "-E", "--episode" };
-    private static readonly string[] YEAR_FLAGS = { "-y", "--year" };
-    private static readonly string[] PACK_FLAGS = { "-p", "--pack" };
     private static readonly string[] LANGUAGE_FLAGS = { "--lang" };
+    private static readonly string[] YEAR_FLAGS = { "-y", "--year" };
     private static readonly string[] EXTENSION_FILTER_FLAGS = { "--filter" };
-    private static readonly string[] LIST_FLAGS = { "-ls", "--list" };
     private static readonly string[] AUTO_SELECT_FLAGS = { "--auto-select", "-auto" };
+    private static readonly string[] JSON_OUTPUT_FLAGS = { "--json" };
     private static readonly string[] CONTAINS_FLAGS = { "--contains", "--has" };
     // private static readonly string[] RENAME_FLAGS = { "--rename" };
     private static readonly string[] EXTRACT_ARGS_FLAGS = { "--extract" };
@@ -19,7 +16,15 @@ public struct Arguments {
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out", "-o" };
     private static readonly string[] CLEANUP_FLAGS = { "--clean", "--cleanup"};
+    
+    private static readonly string[] SEASON_FLAGS = { "-s", "-S", "--season" };
+    private static readonly string[] EPISODE_FLAGS = { "-e", "-E", "--episode" };
+    private static readonly string[] LIST_FLAGS = { "-ls", "--list" };
+    private static readonly string[] PACK_FLAGS = { "-p", "--pack" };
+    
     private static readonly string[] HELP_FLAGS = { "-h", "-help", "--help" };
+    private static readonly string[] VERSION_FLAGS = { "-v", "-version", "--version" };
+    private static readonly string[] AVAILABLE_LANGUAGES_FLAGS = { "-languages" };
     private static readonly string[] DEV_GEN_FLAGS = { "--gen" };
 
     private static readonly string[] SUBTITLE_FORMATS = {
@@ -58,6 +63,7 @@ public struct Arguments {
     public bool isMovie = true;
     public bool listSeries = false;
     public bool autoSelect = false;
+    public bool jsonOutput = false;
     public bool cleanup = false;
 
     private bool providedSeason = false;
@@ -69,6 +75,8 @@ public struct Arguments {
     public Arguments() {
     }
 
+    // Parses arguments and returns an instance unless any of the following flags are specified:
+    // 'help', 'version', 'available languages', or if an error occurs during parsing.
     public static Arguments Parse(string[] args) {
         var arguments = new Arguments();
         bool isTitleSet = false;
@@ -76,6 +84,16 @@ public struct Arguments {
         HashSet<uint> episodeSet = new();
         for (int i = 0; i < args.Length; i++) {
             string currentArg = args[i];
+            
+            if (EqualsAny(currentArg, HELP_FLAGS)) {
+                PrintHelp();
+                Environment.Exit(0);
+            }
+            
+            if (EqualsAny(currentArg, VERSION_FLAGS)) {
+                Utils.OkExit(Program.VERSION);
+            }
+            
             string? flag = GetPrefixedFlag(currentArg, SEASON_FLAGS);
             if (flag != null) {
                 arguments.isMovie = false;
@@ -207,6 +225,11 @@ public struct Arguments {
                 continue;
             }
             
+            if (EqualsAny(currentArg, JSON_OUTPUT_FLAGS)) {
+                arguments.jsonOutput = true;
+                continue;
+            }
+            
             if (EqualsAny(currentArg, CLEANUP_FLAGS)) {
                 arguments.cleanup = true;
                 continue;
@@ -273,6 +296,11 @@ public struct Arguments {
                 continue;
             }
 
+            if (EqualsAny(currentArg, AVAILABLE_LANGUAGES_FLAGS)) {
+                PrintLanguages();
+                Environment.Exit(0);
+            }
+
             if (EqualsAny(currentArg, DEV_GEN_FLAGS)) {
                 bool hasNext = i + 1 < args.Length;
                 if (!hasNext) {
@@ -286,11 +314,6 @@ public struct Arguments {
                 }
 
                 continue;
-            }
-
-            if (EqualsAny(currentArg, HELP_FLAGS)) {
-                PrintHelp();
-                Environment.Exit(0);
             }
 
             if (currentArg.StartsWith('-')) {
@@ -510,6 +533,11 @@ public struct Arguments {
 
         if (convert && !SUBTITLE_FORMATS.Contains(convertToExtension)) {
             Console.WriteLine($"Extension '{convertToExtension}' doesn't match any recognized subtitle formats!");
+            return false;
+        }
+        
+        if (jsonOutput && !autoSelect) {
+            Console.WriteLine("Json output cannot be used without --auto-select");
             return false;
         }
 
