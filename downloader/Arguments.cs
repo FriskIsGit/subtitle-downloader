@@ -649,54 +649,56 @@ public struct Arguments {
     }
 
     public static void PrintHelp() {
+        StringBuilder help = new StringBuilder();
         string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-        Console.WriteLine($"Subtitle downloader-converter (OpenSubtitles) v{Program.VERSION}");
-        Console.WriteLine();
-        Console.WriteLine($"Usage: {programName} [movie/show title] [arguments...]");
-        Console.WriteLine($"       {programName} --from [file path] [arguments...]");
-        Console.WriteLine($"       {programName} --extract [filename] [arguments...]");
-        Console.WriteLine();
-        Console.WriteLine("Options:");
-        Console.WriteLine(formatOption(LANGUAGE_FLAGS, "Subtitle language code (3 letters)"));
-        Console.WriteLine(formatOption(YEAR_FLAGS, "Release year of the movie or tv series"));
-        Console.WriteLine(formatOption(EXTENSION_FILTER_FLAGS, "Filter subtitles by extension"));
-        Console.WriteLine(formatOption(CONTAINS_FLAGS, "Filter subtitles by text contained in filename"));
-        Console.WriteLine(formatOption(AUTO_SELECT_FLAGS, "Automatically selects subtitle to download"));
-        Console.WriteLine(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
-        Console.WriteLine(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
-        Console.WriteLine(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
-        Console.WriteLine(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
-        Console.WriteLine(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
-        Console.WriteLine(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
-        Console.WriteLine(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
-        Console.WriteLine();
-        Console.WriteLine("TV series options:");
-        Console.WriteLine(formatOption(SEASON_FLAGS, "Season number of the tv series"));
-        Console.WriteLine(formatOption(EPISODE_FLAGS, "Episode numbers of the tv series"));
-        Console.WriteLine(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
-        Console.WriteLine(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
-        Console.WriteLine();
-        Console.WriteLine("To display available subtitle languages and their codes use: -languages");
-        Console.WriteLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
-        Console.WriteLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
-        Console.WriteLine("File name provided with the '--extract' flag should have an extension & follow any of the three formats:");
-        Console.WriteLine(" - dotted: Series.Name.Year.SxEy");
-        Console.WriteLine(" - spaced: Production Name (Year) SxEy");
-        Console.WriteLine(" - dashed: Production-Name-Year-SxEy");
-        Console.WriteLine();
-        Console.WriteLine("Usage example:");
-        Console.WriteLine($"  {programName} \"The Godfather\" -y 1972");
-        Console.WriteLine($"  {programName} \"Office\" -S9 -E19 -y2005");
-        Console.WriteLine($"  {programName} \"Spongebob\" --year 1999 --season 2 --pack");
-        Console.WriteLine($"  {programName} \"Game of Thrones\" -s8 -e 1-10");
-        Console.WriteLine();
-        Console.WriteLine("Subtitle conversion example:");
-        Console.WriteLine($"  {programName} --from FastAndFurious.srt --shift +5000 --to vtt");
-        Console.WriteLine();
+        help.AppendLine($"Subtitle downloader-converter (OpenSubtitles) v{Program.VERSION}");
+        help.AppendLine();
+        help.AppendLine($"Usage: {programName} [movie/show title] [arguments...]");
+        help.AppendLine($"       {programName} --from [file path] [arguments...]");
+        help.AppendLine($"       {programName} --extract [filename] [arguments...]");
+        help.AppendLine();
+        help.AppendLine("Options:");
+        help.Append(formatOption(LANGUAGE_FLAGS, "Subtitle language code (3 letters)"));
+        help.Append(formatOption(YEAR_FLAGS, "Release year of the movie or tv series"));
+        help.Append(formatOption(EXTENSION_FILTER_FLAGS, "Filter subtitles by extension"));
+        help.Append(formatOption(CONTAINS_FLAGS, "Filter subtitles by text contained in filename"));
+        help.Append(formatOption(AUTO_SELECT_FLAGS, "Automatically selects subtitle to download"));
+        help.Append(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
+        help.Append(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
+        help.Append(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
+        help.Append(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
+        help.Append(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
+        help.Append(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
+        help.Append(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
+        help.AppendLine();
+        help.AppendLine("TV series options:");
+        help.Append(formatOption(SEASON_FLAGS, "Season number of the tv series"));
+        help.Append(formatOption(EPISODE_FLAGS, "Episode numbers of the tv series"));
+        help.Append(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
+        help.Append(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
+        help.AppendLine();
+        help.AppendLine("To display available subtitle languages and their codes use: -languages");
+        help.AppendLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
+        help.AppendLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
+        help.AppendLine("File name provided with the '--extract' flag should have an extension & follow any of the three formats:");
+        help.AppendLine(" - dotted: Series.Name.Year.SxEy");
+        help.AppendLine(" - spaced: Production Name (Year) SxEy");
+        help.AppendLine(" - dashed: Production-Name-Year-SxEy");
+        help.AppendLine();
+        help.AppendLine("Usage example:");
+        help.AppendLine($"  {programName} \"The Godfather\" -y 1972");
+        help.AppendLine($"  {programName} \"Office\" -S9 -E19 -y2005");
+        help.AppendLine($"  {programName} \"Spongebob\" --year 1999 --season 2 --pack");
+        help.AppendLine($"  {programName} \"Game of Thrones\" -s8 -e 1-10");
+        help.AppendLine();
+        help.AppendLine("Subtitle conversion example:");
+        help.AppendLine($"  {programName} --from FastAndFurious.srt --shift +5000 --to vtt");
+        help.AppendLine();
+        Console.Write(help);
     }
 
     private const int PAD_LENGTH = 32;
-    private static string formatOption(string[] flags, string description) {
+    private static StringBuilder formatOption(string[] flags, string description) {
         StringBuilder str = new StringBuilder(100);
         str.Append("    ");
         
@@ -717,7 +719,8 @@ public struct Arguments {
         }
         
         str.Append(description);
-        return str.ToString();
+        str.AppendLine();
+        return str;
     }
 
     public override string ToString() {
