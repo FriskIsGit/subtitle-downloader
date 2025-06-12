@@ -17,9 +17,10 @@ class ProgramFlow {
             convertLocally();
             return;
         }
-
+        
         List<Production> productions = fetchProductions();
         Production production = chooseProduction(productions);
+        
         Console.WriteLine("Selected - " + production);
         string pageUrl = production.getPageUrl(args.language);
         List<string> paths = fetchSubtitle(pageUrl);
@@ -108,15 +109,29 @@ class ProgramFlow {
         return (Converter.serialize(subtitleFile, path, newExtension), true);
     }
 
+    // Suggests and searches for productions
+    // This function is also responsible for filtering entries based on production kind
     private List<Production> fetchProductions() {
         List<Production> productions = api.getSuggestedMovies(args.title);
-        if (productions.Count == 0) {
-            Console.WriteLine("No suggested productions found, falling back to search");
-            productions = api.searchProductions(args);
-            if (productions.Count == 0) {
-                Utils.FailExit("Fallback failed!");
-            }
+        int suggested = productions.Count;
+        keepKind(productions, args.isMovie ? "movie" : "tv");
+        if (productions.Count > 0) {
+            return productions;
         }
+        
+        string suggestedInfo = suggested == 0 ? "found" : "remained after filtering";
+        Console.WriteLine("No suggested productions " + suggestedInfo + "; falling back to search");
+        productions = api.searchProductions(args);
+        int searched = productions.Count;
+        keepKind(productions, args.isMovie ? "movie" : "tv");
+        if (productions.Count > 0) {
+            // There might still be work to do afterwards if no entries match out of the suggested
+            return productions;
+        }
+        
+        string searchInfo = searched == 0 ? "found" : "remained after filtering";
+        Utils.FailExit("No searched productions " + searchInfo + "; exiting!");
+
         return productions;
     }
 
@@ -344,11 +359,10 @@ class ProgramFlow {
     private const bool USER_SELECTS_PRODUCTION = false;
 
     private Production chooseProduction(List<Production> productions) {
-        keepKind(productions, args.isMovie ? "movie" : "tv");
         switch (productions.Count) {
             case 0:
-                Utils.FailExit("ERROR: No productions remained after filtering");
-                break;
+                Utils.FailExit("ERROR: No productions to choose from.");
+                break; 
             case 1:
                 return productions[0];
         }
@@ -393,9 +407,9 @@ class ProgramFlow {
             }
 
             if (!hasMatchingYear) {
-                Console.WriteLine($"No production found where year is matching, given: {args.year}");
+                Console.WriteLine($"No productions found from the year {args.year}");
                 foreach (var prod in productions) {
-                    Console.WriteLine(prod);
+                    Console.WriteLine(" - " + prod);
                 }
 
                 Environment.Exit(1);
