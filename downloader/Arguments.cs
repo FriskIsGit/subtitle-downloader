@@ -16,6 +16,7 @@ public struct Arguments {
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
     private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out", "-o" };
     private static readonly string[] CLEANUP_FLAGS = { "--clean", "--cleanup"};
+    private static readonly string[] PROVIDER_FLAGS = { "--provider" };
     
     private static readonly string[] SEASON_FLAGS = { "-s", "-S", "--season" };
     private static readonly string[] EPISODE_FLAGS = { "-e", "-E", "--episode" };
@@ -42,6 +43,7 @@ public struct Arguments {
     private const int BACKWARD_SHIFT_CAP = -12 * 60 * 60 * 1000;
     private const int FORWARD_SHIFT_CAP = 12 * 60 * 60 * 1000;
 
+    public Provider provider = Provider.OpenSubtitles;
     public string title = "";
     public string language = "eng";
     public string extensionFilter = "";
@@ -232,6 +234,24 @@ public struct Arguments {
             
             if (EqualsAny(currentArg, CLEANUP_FLAGS)) {
                 arguments.cleanup = true;
+                continue;
+            }
+            
+            if (EqualsAny(currentArg, PROVIDER_FLAGS)) {
+                EnsureNextArgument("A provider was expected. Help: --provider <provider>", i, args.Length);
+                string providerName = args[i + 1];
+                i++;
+                switch (providerName.ToLower()) {
+                    case "opensubtitles":
+                        arguments.provider = Provider.OpenSubtitles;
+                        break;
+                    case "subdl":
+                        arguments.provider = Provider.SubDL;
+                        break;
+                    default:
+                        Utils.FailExit("Unknown provider: " + providerName);
+                        break;
+                }
                 continue;
             }
 
@@ -669,6 +689,7 @@ public struct Arguments {
         help.Append(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
         help.Append(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
         help.Append(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
+        help.Append(formatOption(PROVIDER_FLAGS, "Force subtitle provider, one of: OpenSubtitles, SubDL"));
         help.Append(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
         help.AppendLine();
         help.AppendLine("TV series options:");
@@ -878,4 +899,8 @@ Vietnamese             vie
 Welsh                  wel";
         Console.WriteLine(LANGUAGES);
     }
+}
+
+public enum Provider {
+    OpenSubtitles, SubDL
 }
