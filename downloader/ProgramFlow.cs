@@ -1,11 +1,14 @@
 ﻿using System.Diagnostics;
+using System.Net;
 using System.Text;
+using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader; 
 
 class ProgramFlow {
     private const int MAX_PACK_SIZE = 50;
-    private readonly OpenSubtitleAPI api = new();
+    private readonly OpenSubtitleAPI openApi = new();
+    private readonly SubDlAPI subDlApi = new();
     private readonly Arguments args;
 
     public ProgramFlow(Arguments arguments) {
@@ -17,13 +20,13 @@ class ProgramFlow {
             convertLocally();
             return;
         }
-        
-        List<Production> productions = fetchProductions();
-        Production production = chooseProduction(productions);
-        
-        Console.WriteLine("Selected - " + production);
-        string pageUrl = production.getPageUrl(args.language);
-        List<string> paths = fetchSubtitle(pageUrl);
+
+        List<string> paths = new List<string>();
+        if (args.provider == Provider.OpenSubtitles) {
+            paths = executeOpenSubtitlesFlow();
+        } else if (args.provider == Provider.SubDL) {
+            paths = executeSubDlFlow();
+        }
 
         if (paths.Count == 0) {
             Console.WriteLine("No file paths to process! How?");
@@ -41,6 +44,43 @@ class ProgramFlow {
         }
     }
 
+    private List<string> executeOpenSubtitlesFlow() {
+        List<Production> productions = fetchProductions();
+        Production production = chooseProduction(productions);
+        
+        Console.WriteLine("Selected - " + production);
+        string pageUrl = production.getPageUrl(args.language);
+        return fetchSubtitle(pageUrl);
+    }
+    
+    private List<string> executeSubDlFlow() {
+        Query query = new Query(SubDlAPI.API_KEY);
+        query.applyArguments(args);
+        var timer = Stopwatch.StartNew();
+        SimpleResponse response = subDlApi.sendQuery(query);
+        var taken = timer.ElapsedMilliseconds;
+        Console.WriteLine("Taken " + taken + " ms");
+        if (response.statusCode == HttpStatusCode.TooManyRequests) {
+            Utils.FailExit("Too many requests");
+        }
+        Console.WriteLine(response.statusCode);
+        Console.WriteLine(response.content);
+        // File.WriteAllText("SubDLResponse" + args.title + ".json", response.content);
+        JsonNode? node = null;
+        try {
+            node = JsonNode.Parse(response.content);
+        }
+        catch (Exception e) {
+            Utils.FailExit(e.Message);
+        }
+
+        var subtitleResponse = SubtitleResponse.fromJson(node);
+        
+        
+        
+        return new List<string>();
+    }
+    
     private static string formatPathsAsList(List<string> paths) {
         StringBuilder format = new StringBuilder();
         foreach (string path in paths) {
@@ -112,7 +152,7 @@ class ProgramFlow {
     // Suggests and searches for productions
     // This function is also responsible for filtering entries based on production kind
     private List<Production> fetchProductions() {
-        List<Production> productions = api.getSuggestedMovies(args.title);
+        List<Production> productions = openApi.getSuggestedMovies(args.title);
         int suggested = productions.Count;
         keepKind(productions, args.isMovie ? "movie" : "tv");
         if (productions.Count > 0) {
@@ -121,7 +161,7 @@ class ProgramFlow {
         
         string suggestedInfo = suggested == 0 ? "found" : "remained after filtering";
         Console.WriteLine("No suggested productions " + suggestedInfo + "; falling back to search");
-        productions = api.searchProductions(args);
+        productions = openApi.searchProductions(args);
         int searched = productions.Count;
         keepKind(productions, args.isMovie ? "movie" : "tv");
         if (productions.Count > 0) {
@@ -144,7 +184,7 @@ class ProgramFlow {
             return downloadSubtitle(bestSubtitle.getDownloadURL());
         }
         // Series fetching logic
-        SimpleResponse seasonsResponse = api.fetchHtml(pageUrl);
+        SimpleResponse seasonsResponse = openApi.getHtml(pageUrl);
         if (seasonsResponse.isError()) {
             Utils.FailExit("Failed to fetch seasons. URL: " + seasonsResponse.lastLocation);
         }
@@ -187,7 +227,7 @@ class ProgramFlow {
     }
 
     private List<SubtitleRow> scrapeSubtitles(string pageURL) {
-        var response = api.fetchHtml(pageURL);
+        var response = openApi.getHtml(pageURL);
         if (response.isError()) {
             Utils.FailExit("Failed to download subtitle");
         }
@@ -208,7 +248,7 @@ class ProgramFlow {
         // This internally checks if directory exists anyway
         Directory.CreateDirectory(outputDir);
         
-        var download = api.downloadSubtitle(resourceUrl, outputDir);
+        var download = openApi.downloadSubtitle(resourceUrl, outputDir);
         try {
             download.Wait();
         }

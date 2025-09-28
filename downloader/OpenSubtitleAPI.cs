@@ -8,16 +8,15 @@ namespace subtitle_downloader.downloader;
 public class OpenSubtitleAPI {
     private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
     private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
-    private const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130";
 
-    private readonly HttpClient client = new(new HttpClientHandler { AllowAutoRedirect = true }) {
+    private readonly ExtendedHttpClient client = new(new HttpClientHandler { AllowAutoRedirect = true }) {
         Timeout = TimeSpan.FromSeconds(60)
     };
 
     public List<Production> getSuggestedMovies(string title) {
         var productions = new List<Production>();
         string url = $"{SUBTITLE_SUGGEST}&MovieName={title}";
-        var response = fetchJson(url);
+        var response = client.fetchJson(url);
         if (response.statusCode != HttpStatusCode.OK) {
             Console.WriteLine($"Status code: {response.statusCode}");
             return productions;
@@ -54,7 +53,7 @@ public class OpenSubtitleAPI {
         if (args.year != 0) {
             url.Append($"/MovieYear-{args.year}");
         }
-        var simpleResponse = fetchHtml(url.ToString());
+        var simpleResponse = client.fetchHtml(url.ToString());
         if (simpleResponse.isError()) {
             Utils.FailExit("Failed to fetch seasons. Code:" + simpleResponse.statusCode);
         }
@@ -67,53 +66,10 @@ public class OpenSubtitleAPI {
         return SubtitleScraper.scrapeSearchResults(simpleResponse.content, args.isMovie);
     }
 
-    public SimpleResponse fetchJson(string url) {
-        var getRequest = new HttpRequestMessage {
-            RequestUri = new Uri(url),
-            Method = HttpMethod.Get,
-        };
-        
-        getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
-        getRequest.Headers.Accept.ParseAdd("application/json");
-        var response = client.Send(getRequest);
-        HttpStatusCode code = response.StatusCode;
-        string content = response.Content.ReadAsStringAsync().Result;
-        return new SimpleResponse(code, content);
+    public SimpleResponse getHtml(string url) {
+        return client.get(url);
     }
-    
-    public SimpleResponse fetchHtml(string url) {
-        var getRequest = new HttpRequestMessage {
-            RequestUri = new Uri(url),
-            Method = HttpMethod.Get,
-        };
-        getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
-        getRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("text/html"));
-        getRequest.Headers.AcceptLanguage.ParseAdd("en-US;q=0.7");
-        getRequest.Headers.Add("Set-GPC", "1");
-        HttpResponseMessage? response;
-        try {
-            response = client.Send(getRequest);
-        }
-        catch (Exception exception) {
-            Utils.FailExit(exception.Message);
-            return new SimpleResponse(HttpStatusCode.ServiceUnavailable, "", url);
-        }
-         
-        string content = response.Content.ReadAsStringAsync().Result;
-        if (response.StatusCode == HttpStatusCode.OK) {
-            return new SimpleResponse(response.StatusCode, content, url);
-        }
 
-        var statusCode = response.StatusCode;
-        if (response.Headers.Location != null && 
-            (statusCode == HttpStatusCode.MovedPermanently || statusCode == HttpStatusCode.Redirect)) {
-            return fetchHtml(response.Headers.Location.ToString());
-        }
-        
-        Console.WriteLine("Response code: " + statusCode);
-        return new SimpleResponse(response.StatusCode, content, url);
-    }
-    
     public async Task<SimpleDownloadResponse> downloadSubtitle(string resourceUrl, string outputDir) {
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
         string filename = "unknown.zip";
@@ -147,43 +103,54 @@ public class OpenSubtitleAPI {
     }
 }
 
-public readonly struct SimpleDownloadResponse {
-    public readonly string filename;
-    public readonly HttpStatusCode statusCode;
+// Retrieved as part of JSON response from suggest.php
+public struct Production {
+    public uint id;
+    public uint year;
+    public uint total;
+    
+    public string name;
+    public string kind;
+    public string rating;
 
-    public SimpleDownloadResponse(string filename, HttpStatusCode code) {
-        this.filename = filename;
-        statusCode = code;
+    public static Production parse(JsonNode node) {
+        var production = new Production();
+        production.name = node["name"]?.ToString() ?? "";
+        production.year = uint.Parse(node["year"]?.ToString() ?? "");
+        production.total = uint.Parse(node["total"]?.ToString() ?? "");
+        production.id = node["id"]?.GetValue<uint>() ?? 0;
+        production.kind = node["kind"]?.ToString() ?? "";
+        production.rating = node["rating"]?.ToString() ?? "";
+        return production;
+    }
+
+    public override string ToString() {
+        return $"{name} ({year}) id:{id} rating:{rating} kind:{kind}";
+    }
+
+    public string getPageUrl(string langId) {
+        if (langId.Length > 3) {
+            langId = langId[..3];
+        }
+        return $"https://www.opensubtitles.org/en/search/sublanguageid-{langId}/idmovie-{id}";
     }
     
-    public static SimpleDownloadResponse fail(HttpStatusCode code) {
-        return new SimpleDownloadResponse("", code);
-    }
-    
-    public static SimpleDownloadResponse ok(string filename) {
-        return new SimpleDownloadResponse(filename, HttpStatusCode.OK);
-    }
+    public static (string title, uint year) ParseTitleYear(string productionName) {
+        int newLine = productionName.IndexOf('\n', StringComparison.InvariantCulture);
+        if (newLine == -1) {
+            return ("", 0);
+        }
+        string title = productionName[..newLine];
 
-    public bool isError() {
-        return (int)statusCode >= 400;
-    }
-}
+        int bracketOpen = productionName.LastIndexOf('(');
+        if (bracketOpen != -1) {
+            int close = productionName.LastIndexOf(')');
+            string numericalYear = productionName[(bracketOpen+1)..close];
+            if (uint.TryParse(numericalYear, out var year)) {
+                return (title, year);
+            }
+        }
 
-public readonly struct SimpleResponse {
-    public readonly HttpStatusCode statusCode;
-    public readonly string content;
-    public readonly string? lastLocation = null;
-    public SimpleResponse(HttpStatusCode code, string content) {
-        statusCode = code;
-        this.content = content;
-    }
-    public SimpleResponse(HttpStatusCode code, string content, string lastLocation) {
-        statusCode = code;
-        this.content = content;
-        this.lastLocation = lastLocation;
-    }
-
-    public bool isError() {
-        return (int)statusCode >= 400;
+        return (title, 0);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader;
 
@@ -790,9 +791,76 @@ public struct Arguments {
                 return false;
         }
     }
+
+    private static JsonNode? SUB_DL_LANGUAGES = JsonNode.Parse(@"{
+  ""AR"": ""Arabic"",
+  ""BR_PT"": ""Brazillian Portuguese"",
+  ""DA"": ""Danish"",
+  ""NL"": ""Dutch"",
+  ""EN"": ""English"",
+  ""FA"": ""Farsi_Persian"",
+  ""FI"": ""Finnish"",
+  ""FR"": ""French"",
+  ""ID"": ""Indonesian"",
+  ""IT"": ""Italian"",
+  ""NO"": ""Norwegian"",
+  ""RO"": ""Romanian"",
+  ""ES"": ""Spanish"",
+  ""SV"": ""Swedish"",
+  ""VI"": ""Vietnamese"",
+  ""SQ"": ""Albanian"",
+  ""AZ"": ""Azerbaijani"",
+  ""BE"": ""Belarusian"",
+  ""BN"": ""Bengali"",
+  ""ZH_BG"": ""Big 5 code"",
+  ""BS"": ""Bosnian"",
+  ""BG"": ""Bulgarian"",
+  ""BG_EN"": ""Bulgarian_English"",
+  ""MY"": ""Burmese"",
+  ""CA"": ""Catalan"",
+  ""ZH"": ""Chinese BG code"",
+  ""HR"": ""Croatian"",
+  ""CS"": ""Czech"",
+  ""NL_EN"": ""Dutch_English"",
+  ""EN_DE"": ""English_German"",
+  ""EO"": ""Esperanto"",
+  ""ET"": ""Estonian"",
+  ""KA"": ""Georgian"",
+  ""DE"": ""German"",
+  ""EL"": ""Greek"",
+  ""KL"": ""Greenlandic"",
+  ""HE"": ""Hebrew"",
+  ""HI"": ""Hindi"",
+  ""HU"": ""Hungarian"",
+  ""HU_EN"": ""Hungarian_English"",
+  ""IS"": ""Icelandic"",
+  ""JA"": ""Japanese"",
+  ""KO"": ""Korean"",
+  ""KU"": ""Kurdish"",
+  ""LV"": ""Latvian"",
+  ""LT"": ""Lithuanian"",
+  ""MK"": ""Macedonian"",
+  ""MS"": ""Malay"",
+  ""ML"": ""Malayalam"",
+  ""MNI"": ""Manipuri"",
+  ""PL"": ""Polish"",
+  ""PT"": ""Portuguese"",
+  ""RU"": ""Russian"",
+  ""SR"": ""Serbian"",
+  ""SI"": ""Sinhala"",
+  ""SK"": ""Slovak"",
+  ""SL"": ""Slovenian"",
+  ""TL"": ""Tagalog"",
+  ""TA"": ""Tamil"",
+  ""TE"": ""Telugu"",
+  ""TH"": ""Thai"",
+  ""TR"": ""Turkish"",
+  ""UK"": ""Ukranian"",
+  ""UR"": ""Urdu""
+}");
     
     public static void PrintLanguages() {
-        const string LANGUAGES = @"
+        const string OPEN_SUBTITLES_LANGUAGES = @"
 ALL                    all
 Abkhazian              abk
 Afrikaans              afr
@@ -897,7 +965,7 @@ Urdu                   urd
 Uzbek                  uzb
 Vietnamese             vie
 Welsh                  wel";
-        Console.WriteLine(LANGUAGES);
+        Console.WriteLine(OPEN_SUBTITLES_LANGUAGES);
     }
 }
 
