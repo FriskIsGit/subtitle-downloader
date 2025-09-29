@@ -8,10 +8,13 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   
-  <!--    Don't compile tests in a submodule-->
   <ItemGroup>
+    <!-- Don't compile tests in a submodule -->
     <Compile Remove="scraper/tests/*" />
     <EmbeddedResource Remove="scraper/tests/*" />
     <None Remove="scraper/tests/*" />
+    <!-- Don't compile test-->
+<!--    <EmbeddedResource Remove="test/*" />-->
+<!--    <None Remove="test/*" />-->
   </ItemGroup>
 </Project>

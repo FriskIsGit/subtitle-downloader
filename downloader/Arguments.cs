@@ -450,7 +450,7 @@ public struct Arguments {
                 args.isMovie = false;
                 appendingTitle = false;
             }
-            else if (part.Length == 4 && isNumerical(part)) {
+            else if (part.Length == 4 && Utils.isNumerical(part)) {
                 if (!uint.TryParse(part, out var year)) {
                     Console.WriteLine("Failed to parse year value");
                     continue;
@@ -459,7 +459,7 @@ public struct Arguments {
                 args.year = year;
                 appendingTitle = false;
             }
-            else if (part.Length == 6 && part[0] == '(' && part[5] == '(' && isNumerical(part[1..5])) {
+            else if (part.Length == 6 && part[0] == '(' && part[5] == '(' && Utils.isNumerical(part[1..5])) {
                 if (!uint.TryParse(part[1..5], out var year)) {
                     Console.WriteLine("Failed to parse year value");
                     continue;
@@ -577,13 +577,7 @@ public struct Arguments {
     }
 
     private static bool EqualsAny(string arg, params string[] parameters) {
-        foreach (var param in parameters) {
-            if (arg == param) {
-                return true;
-            }
-        }
-
-        return false;
+        return Utils.EqualsAny(arg, parameters);
     }
 
     public static (string title, uint year) ParseTitleYear(string name) {
@@ -600,69 +594,6 @@ public struct Arguments {
         }
         return (title, 0);
     }
-    
-    // Expected format: Movie Name (year) S1 E5
-    // The year must be in brackets because some titles are literally just a number
-    public static Arguments FancyParse(string input) {
-        string[] parts = input.Split(' ');
-        var args = new Arguments();
-        bool parsedProperty = false;
-        var title = new StringBuilder(32);
-        foreach (var part in parts) {
-            if (part.Length == 0) {
-                // Skip additional empty spaces
-                continue;
-            }
-
-            // Parse year in brackets
-            if (part.StartsWith('(')) {
-                int closing = part.LastIndexOf(')');
-                if (closing == -1) {
-                    closing = part.Length;
-                }
-
-                string maybeYear = part[1..closing];
-                if (!isNumerical(maybeYear)) {
-                    Console.WriteLine("The year is not numerical, skipping!");
-                    continue;
-                }
-                if (maybeYear.Length < 4) {
-                    Console.WriteLine("The year is too short, skipping!");
-                    continue;
-                }
-                args.year = uint.Parse(maybeYear);
-                if (args.year < MIN_YEAR) {
-                    Console.WriteLine($"The first sound film was projected in {MIN_YEAR}");
-                    continue;
-                }
-                parsedProperty = true;
-                continue;
-            }
-
-            if ((part.StartsWith('S') || part.StartsWith('s')) && part.Length > 1 && isNumerical(part[1])) {
-                args.season = uint.Parse(part[1..]);
-                args.isMovie = false;
-                parsedProperty = true;
-                continue;
-            }
-            if ((part.StartsWith('E') || part.StartsWith('e')) && part.Length > 1 && isNumerical(part[1])) {
-                args.episodes.Add(uint.Parse(part[1..]));
-                args.isMovie = false;
-                parsedProperty = true;
-                continue;
-            }
-
-            if (!parsedProperty) {
-                if (title.Length > 0) {
-                    title.Append(' ');
-                }
-                title.Append(part);
-            }
-        }
-
-        args.title = title.ToString();
-        return args;
-    }
 
     public readonly bool requiresModifications(string originalExt = "") {
         bool mayRequireConverting = convert && (originalExt == "" || convertToExtension != originalExt);
@@ -672,7 +603,7 @@ public struct Arguments {
     public static void PrintHelp() {
         StringBuilder help = new StringBuilder();
         string programName = System.Diagnostics.Process.GetCurrentProcess().ProcessName;
-        help.AppendLine($"Subtitle downloader-converter (OpenSubtitles) v{Program.VERSION}");
+        help.AppendLine($"Subtitle downloader-converter v{Program.VERSION}");
         help.AppendLine();
         help.AppendLine($"Usage: {programName} [movie/show title] [arguments...]");
         help.AppendLine($"       {programName} --from [file path] [arguments...]");
@@ -769,27 +700,6 @@ public struct Arguments {
             str.Append($"{language}");
         }
         return str.ToString();
-    }
-
-    private static bool isNumerical(string str) {
-        foreach (var chr in str) {
-            switch (chr) {
-                case >= '0' and <= '9':
-                    break;
-                default:
-                    return false;
-            }
-        }
-        return true;
-    }
-    
-    private static bool isNumerical(char chr) {
-        switch (chr) {
-            case >= '0' and <= '9':
-                return true;
-            default:
-                return false;
-        }
     }
 
     private static JsonNode? SUB_DL_LANGUAGES = JsonNode.Parse(@"{

@@ -24,10 +24,25 @@ public class ExtendedHttpClient : HttpClient {
         return new SimpleResponse(code, content);
     } 
     
-    public SimpleResponse fetchJson(string url) {
+    public SimpleResponse getJson(string url) {
         var getRequest = new HttpRequestMessage {
             RequestUri = new Uri(url),
-            Method = HttpMethod.Get,
+            Method = HttpMethod.Get
+        };
+        
+        getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
+        getRequest.Headers.Accept.ParseAdd("application/json");
+        var response = Send(getRequest);
+        HttpStatusCode code = response.StatusCode;
+        string content = response.Content.ReadAsStringAsync().Result;
+        return new SimpleResponse(code, content);
+    }
+    
+    public SimpleResponse post(string url, string body) {
+        var getRequest = new HttpRequestMessage {
+            RequestUri = new Uri(url),
+            Method = HttpMethod.Post,
+            Content = new StringContent(body)
         };
         
         getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);

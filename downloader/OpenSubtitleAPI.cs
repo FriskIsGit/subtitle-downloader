@@ -16,7 +16,7 @@ public class OpenSubtitleAPI {
     public List<Production> getSuggestedMovies(string title) {
         var productions = new List<Production>();
         string url = $"{SUBTITLE_SUGGEST}&MovieName={title}";
-        var response = client.fetchJson(url);
+        var response = client.getJson(url);
         if (response.statusCode != HttpStatusCode.OK) {
             Console.WriteLine($"Status code: {response.statusCode}");
             return productions;
@@ -80,7 +80,7 @@ public class OpenSubtitleAPI {
         switch (response.StatusCode) {
             case HttpStatusCode.MovedPermanently:
                 Console.WriteLine("Captcha? (301). Downgrading to HTTP");
-                resourceUrl = downgradeUrl(resourceUrl);
+                resourceUrl = Utils.downgradeUrl(resourceUrl);
                 break;
             case HttpStatusCode.NotFound:
                 Console.WriteLine("Received 404 - likely the pack has more than 50 subtitles inside.");
@@ -96,10 +96,6 @@ public class OpenSubtitleAPI {
         await using var fs = new FileStream(path, FileMode.Create);
         await stream.CopyToAsync(fs);
         return SimpleDownloadResponse.ok(path);
-    }
-
-    private static string downgradeUrl(string url) {
-        return url.Replace("https", "http");
     }
 }
 

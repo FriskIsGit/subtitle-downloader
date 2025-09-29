@@ -1,5 +1,4 @@
 using System.IO.Compression;
-using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -209,6 +208,36 @@ public class Utils {
         return true;
     }
     
+    public static bool isNumerical(string str) {
+        foreach (var chr in str) {
+            switch (chr) {
+                case >= '0' and <= '9':
+                    break;
+                default:
+                    return false;
+            }
+        }
+        return true;
+    }
+    
+    public static bool isNumerical(char chr) {
+        switch (chr) {
+            case >= '0' and <= '9':
+                return true;
+            default:
+                return false;
+        }
+    }
+    
+    public static bool EqualsAny(string target, params string[] candidates) {
+        foreach (var param in candidates) {
+            if (target == param) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static void FailExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(1);
@@ -217,5 +246,12 @@ public class Utils {
     public static void OkExit(string message) {
         Console.WriteLine(message);
         Environment.Exit(0);
+    }
+    
+    public static string downgradeUrl(string url) {
+        if (url.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) {
+            url = "http" + url[5..];
+        }
+        return url;
     }
 }

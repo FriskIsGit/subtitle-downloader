@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 
 namespace subtitle_downloader.downloader; 
@@ -59,7 +60,7 @@ class ProgramFlow {
         var timer = Stopwatch.StartNew();
         SimpleResponse response = subDlApi.sendQuery(query);
         var taken = timer.ElapsedMilliseconds;
-        Console.WriteLine("Taken " + taken + " ms");
+        Console.WriteLine("Received query response in " + taken + " ms");
         if (response.statusCode == HttpStatusCode.TooManyRequests) {
             Utils.FailExit("Too many requests");
         }
@@ -70,14 +71,22 @@ class ProgramFlow {
         try {
             node = JsonNode.Parse(response.content);
         }
-        catch (Exception e) {
-            Utils.FailExit(e.Message);
+        catch (JsonException e) {
+            if (e.Message.StartsWith("undefined is not an object")) {
+                Utils.FailExit("ERROR: Likely the token is not provided or invalid.");
+            }
+
+            Utils.FailExit("Response is invalid JSON: " + e.Message);
+        }
+        
+        var subtitleResponse = SubtitleResponse.fromJson(node);
+        if (!subtitleResponse.status) {
+            Console.WriteLine("WARN: Status response does not indicate success");
+        }
+        foreach (var subResult in subtitleResponse.subtitles) {
+
         }
 
-        var subtitleResponse = SubtitleResponse.fromJson(node);
-        
-        
-        
         return new List<string>();
     }
     

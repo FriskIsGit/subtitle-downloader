@@ -13,7 +13,7 @@ public class SubDlAPI {
     };
 
     public SimpleResponse sendQuery(Query query) {
-        return client.fetchJson(API_ENDPOINT + query.toPathParams());
+        return client.getJson(API_ENDPOINT + query.toPathParams());
     }
 }
 
@@ -159,8 +159,9 @@ public class MovieResult {
 }
 
 public class SubtitleResult {
-    private string releaseName, name, lang, author, url, subtitlePage, language;
-    private int season;
+    public string releaseName, name, lang, author, language;
+    private string url, subtitlePage;
+    public int season;
     
     public static SubtitleResult fromJson(JsonNode json) {
         SubtitleResult result = new SubtitleResult();
