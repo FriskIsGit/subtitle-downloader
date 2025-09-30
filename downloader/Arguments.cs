@@ -261,7 +261,8 @@ public struct Arguments {
 
                 string path = args[i + 1];
                 i++;
-                parseFilename(Path.GetFileNameWithoutExtension(path), ref arguments);
+                Metadata meta = NameParser.parse(Path.GetFileNameWithoutExtension(path));
+                applyMetadataToArguments(meta, ref arguments);
                 continue;
             }
 
@@ -352,6 +353,23 @@ public struct Arguments {
         return arguments;
     }
 
+    private static void applyMetadataToArguments(Metadata meta, ref Arguments args) {
+        args.title = meta.name;
+        args.year = meta.year;
+        if (meta.providedSeason || meta.providedEpisode) {
+            if (meta.providedSeason) {
+                args.providedSeason = true;
+                args.season = meta.season;
+            }
+            if (meta.providedEpisode) {
+                args.providedEpisode = true;
+                args.episodes.Add(meta.episode);
+            }
+        } else {
+            args.isMovie = true;
+        }
+    }
+
     // returns true if any episodes have been parsed, false otherwise
     private static bool parseEpisodes(string[] episodeParams, HashSet<uint> episodes) {
         bool parsedEpisode = false;
@@ -395,93 +413,6 @@ public struct Arguments {
         }
 
         return parsedEpisode;
-    }
-
-    private static void parseFilename(string filename, ref Arguments args) {
-        StringBuilder title = new StringBuilder();
-        string[] parts;
-        if (filename.Contains('.')) {
-            // assume dot format
-            parts = filename.Split('.');
-        }
-        else if (filename.Contains('-')) {
-            parts = filename.Split('-');
-        }
-        else {
-            parts = filename.Split(' ');
-        }
-
-        bool appendingTitle = true;
-        foreach (var part in parts) {
-            if (part.EndsWith("0p")) {
-                appendingTitle = false;
-                continue;
-            }
-
-            if (part.StartsWith("x264") || part.StartsWith("x265")) {
-                appendingTitle = false;
-                continue;
-            }
-
-            if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) &&
-                char.IsDigit(part[^1])) {
-                int episodeIndex = part.IndexOf('e', 2);
-                if (episodeIndex == -1) {
-                    episodeIndex = part.IndexOf('E', 2);
-                }
-
-                string seasonStr = part[1..episodeIndex];
-                if (!uint.TryParse(seasonStr, out var season)) {
-                    Console.WriteLine("Failed to parse season number");
-                    continue;
-                }
-
-                args.season = season;
-                args.providedSeason = true;
-                string episodeStr = part[(episodeIndex + 1)..];
-                if (!uint.TryParse(episodeStr, out var episode)) {
-                    Console.WriteLine("Failed to parse episode number");
-                    continue;
-                }
-
-                args.episodes.Add(episode);
-                args.providedEpisode = true;
-
-                args.isMovie = false;
-                appendingTitle = false;
-            }
-            else if (part.Length == 4 && Utils.isNumerical(part)) {
-                if (!uint.TryParse(part, out var year)) {
-                    Console.WriteLine("Failed to parse year value");
-                    continue;
-                }
-
-                args.year = year;
-                appendingTitle = false;
-            }
-            else if (part.Length == 6 && part[0] == '(' && part[5] == '(' && Utils.isNumerical(part[1..5])) {
-                if (!uint.TryParse(part[1..5], out var year)) {
-                    Console.WriteLine("Failed to parse year value");
-                    continue;
-                }
-
-                args.year = year;
-                appendingTitle = false;
-            }
-            else {
-                if (!appendingTitle) {
-                    continue;
-                }
-
-                if (title.Length > 0) {
-                    title.Append(' ');
-                }
-
-                title.Append(part);
-            }
-        }
-
-        args.title = title.ToString();
     }
 
     private static void EnsureNextArgument(string errorMsg, int currentIndex, int length) {

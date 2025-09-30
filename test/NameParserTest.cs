@@ -11,33 +11,80 @@ public class NameParserTest {
         runOccurrencesTest(2, "title--2005-gggg", '-');
         runOccurrencesTest(0, "title 2005 gggg", '.');
 
-        runGetYearTest(true, 1985, "(1985)");
+        runGetYearTest(true, 1985, "1985");
         runGetYearTest(true, 2005, "2005");
         runGetYearTest(true, 9999, "9999");
+        runGetYearTest(false, 0, "19z9");
         runGetYearTest(true, 1111, "1111");
-        runGetYearTest(false, 0, "(205)");
+        runGetYearTest(false, 0, "205");
         runGetYearTest(false, 0, "-2005");
+        
+        runMetadataParseTest(new Metadata { name = "Batman" }, "Batman");
+        runMetadataParseTest(new Metadata {
+            name = "Thursday",
+            year = 2012,
+            season = 1,
+            providedSeason = true
+        }, "Thursday(2012)Season1S01(1080pBluRayx265)");
+        
+        runMetadataParseTest(new Metadata {
+            name = "Crazy",
+            releaseType = "WEBRip",
+            season = 1,
+            providedSeason = true
+        }, "CrazyS01MULTiVFi2160p4KLightWEBRipDDP5.1x265-s");
 
+        runMetadataParseTest(new Metadata { name = "Just The Title" }, "Just-The-Title-");
+        // TODO: Correct metadata - infer year from title
+        runMetadataParseTest(new Metadata {
+            name = "The Big Score",
+            year = 1978,
+            releaseType = "BRRip",
+        }, "The Big Score.1978.720p.BRRip.H264 by Author");
+        
+        runMetadataParseTest(new Metadata {
+            name = "(Pri)sons",
+            year = 2024
+        }, "(Pri)sons (2024) z x264");
+        
+        runMetadataParseTest(new Metadata { name = "(Un closed" }, "(Un closed");
+        
+        runMetadataParseTest(new Metadata {
+            name = "(Pri)sons",
+            year = 2024
+        }, "(Pri)sons(2024)");
+        
+        runMetadataParseTest(new Metadata {
+            name = "Wrapping Up",
+            year = 1997,
+            releaseType = "WEB-DL",
+        }, "Wrapping Up (WEB-DL) 1997");
+        
         runMetadataParseTest(new Metadata {
             name = "Batman",
             year = 1966,
             releaseType = "Blu-ray",
-        }, "Batman 1966 480p AVC DTS-HD Blu-ray");
+        }, "Batman 1966 (Test) 480p AVC DTS-HD Blu-ray");
         
         runMetadataParseTest(new Metadata {
             name = "Batman The Movie",
             year = 1966,
             releaseType = "BluRay"
         }, "Batman.The.Movie.1966.720p.BluRay.x264-CiNEFiLE");
-        
+
         runMetadataParseTest(new Metadata {
             name = "Batman",
             year = 1966
         }, "Batman (1966) - 1080p");
         
+        runMetadataParseTest(new Metadata {
+            name = "Peepli [Live]",
+            year = 2010
+        }, "Peepli [Live] 2010");
         
         
-        
+
+
         printResults();
     }
 

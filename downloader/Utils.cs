@@ -219,23 +219,32 @@ public class Utils {
         }
         return true;
     }
-    
-    public static bool isNumerical(char chr) {
-        switch (chr) {
-            case >= '0' and <= '9':
-                return true;
-            default:
-                return false;
-        }
-    }
-    
+
     public static bool EqualsAny(string target, params string[] candidates) {
-        foreach (var param in candidates) {
-            if (target == param) {
+        foreach (var candidate in candidates) {
+            if (target == candidate) {
                 return true;
             }
         }
         return false;
+    }
+    
+    // Returns bool indicating if any candidate was matched, if found returns coordinates of start and (exclusive)end
+    public static (bool, int, int) LocationOfContained(string target, params string[] candidates) {
+        foreach (var candidate in candidates) {
+            int index = target.IndexOf(candidate, StringComparison.InvariantCulture);
+            if (index == -1) {
+                continue;
+            }
+            return (true, index, index + candidate.Length);
+        }
+        return (false, -1, -1);
+    }
+
+    // Determines if string content is wrapped with given characters
+    public static bool isEnclosedBy(string str, char left, char right) {
+        if (str.Length < 2) return false;
+        return str[0] == left && str[^1] == right;
     }
 
     public static void FailExit(string message) {

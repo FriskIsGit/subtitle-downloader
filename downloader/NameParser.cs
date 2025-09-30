@@ -3,6 +3,10 @@
 namespace subtitle_downloader.downloader; 
 
 public class NameParser {
+    private const int MIN_YEAR = 1900;
+    private const int MAX_SEASONS = 50;
+    private const int MAX_EPISODES = 25000;
+    
     private readonly string text;
     private NameParser(string text) {
         this.text = text;
@@ -14,7 +18,7 @@ public class NameParser {
         uint spaces = countSeparateOccurrences(text, ' ');
         if (dots > 1 || dashes > 1 || spaces > 1) {
             uint[] counts = { dots, dashes, spaces };
-            char separator = ' ';
+            char separator = '.';
             uint maxCount = 0;
             for (var i = 0; i < counts.Length; i++) {
                 var c = counts[i];
@@ -32,14 +36,49 @@ public class NameParser {
             string[] parts = text.Split(separator);
             return parseSeparated(parts);
         }
-        
+
+        return parseJoined();
+    }
+
+    private Metadata parseJoined() {
         var meta = new Metadata();
         StringBuilder title = new StringBuilder();
         
-        bool parsedTitle = false;
+        bool parsingTitle = true, lastLower = false;
         for (int i = 0; i < text.Length; i++) {
+            if (i > 0 && text[i] == '(') {
+                int closing = text.IndexOf(')', i + 1);
+                if (closing == -1) {
+                    if (parsingTitle) {
+                        title.Append(text[i..]);
+                        return meta;
+                    }
+                    continue;
+                }
+                
+                string inside = text[(i + 1)..closing];
+                var (isYear, year) = getYear(inside);
+                if (isYear) {
+                    i = closing;
+                    meta.year = year;
+                    parsingTitle = false;
+                    continue;
+                }
+
+                var (matched, start, end) = Utils.LocationOfContained(inside, Metadata.RELEASE_TYPES);
+                if (matched) {
+                    meta.releaseType = inside[start..end];
+                    i += end;
+                }
+                continue;
+            }
             
+            if (parsingTitle) {
+                title.Append(text[i]);
+            }
         }
+        
+        meta.name = title.ToString().Trim();
         return meta;
     }
 
@@ -49,6 +88,11 @@ public class NameParser {
         bool appendingTitle = true;
         for (var index = 0; index < parts.Length; index++) {
             var part = parts[index];
+            if (Utils.isEnclosedBy(part, '(', ')')) {
+                part = part[1..^1];
+                appendingTitle = false;
+            }
+            
             if (index > 0 && Utils.EqualsAny(part, Metadata.NETFLIX_IDENTIFIERS)) {
                 meta.netflix = true;
                 appendingTitle = false;
@@ -112,30 +156,23 @@ public class NameParser {
             title.Append(part);
         }
 
-        meta.name = title.ToString();
+        meta.name = title.ToString().Trim();
         return meta;
     }
 
-    // isYear accounts for two cases (2005) 2005
-    // returning bool determining success
+    // getYear parses string year into uint
+    // The bool returned determines whether parsing was successful
     public static (bool, uint) getYear(string maybeYear) {
-        string toParse;
-        if (maybeYear.Length == 4 && Utils.isNumerical(maybeYear)) {
-            toParse = maybeYear;
-        } else if (maybeYear.Length == 6 && maybeYear[0] == '(' && maybeYear[5] == ')' && Utils.isNumerical(maybeYear[1..5])) {
-            toParse = maybeYear[1..5];
-        } else {
+        if (maybeYear.Length != 4 || !Utils.isNumerical(maybeYear)) {
             return (false, 0);
         }
-
-        if (!uint.TryParse(toParse, out var year)) {
+        if (!uint.TryParse(maybeYear, out var year)) {
             Console.WriteLine("Unexpected error - failed to parse year value, given:" + year);
             return (false, 0);
         }
-        
         return (true, year);
     }
-    
+
     public static uint countSeparateOccurrences(string text, char target) {
         bool lastMatched = false;
         uint count = 0;
@@ -160,7 +197,7 @@ public class NameParser {
 
 public class Metadata {
     public static readonly string[] RELEASE_TYPES = {
-        "BluRay", "Blu-ray", "BDRip", "BRRip", "DVDRip", "DVDR",
+        "BluRay", "Blu-ray", "BDRip", "BrRip", "BRRip", "DVDRip", "DVDR",
         "WEB-DL", "WEBDL", "WEB", "WEBRip", "WEB-Rip", 
         "HDTV", "DVBRip", "PPVRip"
     };
@@ -176,7 +213,7 @@ public class Metadata {
     public uint season, episode, year;
     public bool netflix;
     
-    public bool providedSeason, providedEpisode, providedYear;
+    public bool providedSeason, providedEpisode;
 
     public bool Equals(Metadata other) {
         return name == other.name &&
@@ -186,8 +223,7 @@ public class Metadata {
                year == other.year &&
                netflix == other.netflix &&
                providedSeason == other.providedSeason &&
-               providedEpisode == other.providedEpisode &&
-               providedYear == other.providedYear;
+               providedEpisode == other.providedEpisode;
     }
 
     public override string ToString() {
@@ -205,7 +241,7 @@ public class Metadata {
         if (providedEpisode)
             parts.Add($"Episode: {episode}");
 
-        if (providedYear)
+        if (year != 0)
             parts.Add($"Year: {year}");
 
         parts.Add($"Netflix: {(netflix ? "Yes" : "No")}");

@@ -66,16 +66,17 @@ class ProgramFlow {
         }
         Console.WriteLine(response.statusCode);
         Console.WriteLine(response.content);
-        // File.WriteAllText("SubDLResponse" + args.title + ".json", response.content);
+        
+        if (response.content.StartsWith("undefined is not an object")) {
+            Utils.FailExit("ERROR: Likely the token is invalid or wasn't provided.");
+        }
+        
+        File.WriteAllText("SubDLResponse" + args.title + ".json", response.content);
         JsonNode? node = null;
         try {
             node = JsonNode.Parse(response.content);
         }
         catch (JsonException e) {
-            if (e.Message.StartsWith("undefined is not an object")) {
-                Utils.FailExit("ERROR: Likely the token is not provided or invalid.");
-            }
-
             Utils.FailExit("Response is invalid JSON: " + e.Message);
         }
         
