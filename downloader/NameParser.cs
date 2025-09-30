@@ -9,23 +9,37 @@ public class NameParser {
     }
 
     private Metadata parse() {
-        bool dotted = countSeparateOccurrences(text, '.') > 1;
-        bool dashed = countSeparateOccurrences(text, '-') > 1;
-        bool spaced = countSeparateOccurrences(text, ' ') > 1;
-        if (dotted || dashed || spaced) {
-            string[] parts;
-            if (dotted) {
-                parts = text.Split('.');
-            } else if (dashed) {
-                parts = text.Split('-');
-            } else {
-                parts = text.Split(' ');
+        uint dots = countSeparateOccurrences(text, '.');
+        uint dashes = countSeparateOccurrences(text, '-');
+        uint spaces = countSeparateOccurrences(text, ' ');
+        if (dots > 1 || dashes > 1 || spaces > 1) {
+            uint[] counts = { dots, dashes, spaces };
+            char separator = ' ';
+            uint maxCount = 0;
+            for (var i = 0; i < counts.Length; i++) {
+                var c = counts[i];
+                if (c <= maxCount) {
+                    continue;
+                }
+                maxCount = c;
+                switch (i) {
+                    case 0: separator = '.'; break;
+                    case 1: separator = '-'; break;
+                    default: separator = ' '; break;
+                }
             }
+
+            string[] parts = text.Split(separator);
             return parseSeparated(parts);
         }
+        
         var meta = new Metadata();
         StringBuilder title = new StringBuilder();
         
+        bool parsedTitle = false;
+        for (int i = 0; i < text.Length; i++) {
+            
+        }
         return meta;
     }
 
@@ -108,7 +122,7 @@ public class NameParser {
         string toParse;
         if (maybeYear.Length == 4 && Utils.isNumerical(maybeYear)) {
             toParse = maybeYear;
-        } else if (maybeYear.Length == 6 && maybeYear[0] == '(' && maybeYear[5] == '(' && Utils.isNumerical(maybeYear[1..5])) {
+        } else if (maybeYear.Length == 6 && maybeYear[0] == '(' && maybeYear[5] == ')' && Utils.isNumerical(maybeYear[1..5])) {
             toParse = maybeYear[1..5];
         } else {
             return (false, 0);
@@ -122,58 +136,6 @@ public class NameParser {
         return (true, year);
     }
     
-    // Expected format: Movie Name (year) S1 E5
-    // The year must be in brackets because some titles are literally just a number
-    public Metadata FancyParse() {
-        string[] parts = text.Split(' ');
-        var meta = new Metadata();
-        bool parsedProperty = false;
-        var title = new StringBuilder(32);
-        foreach (var part in parts) {
-            if (part.Length == 0) {
-                // Skip additional empty spaces
-                continue;
-            }
-
-            // Parse year in brackets
-            if (part.StartsWith('(')) {
-                int closing = part.LastIndexOf(')');
-                if (closing == -1) {
-                    closing = part.Length;
-                }
-
-                string maybeYear = part[1..closing];
-                if (!Utils.isNumerical(maybeYear) || maybeYear.Length != 4) {
-                    continue;
-                }
-                meta.year = uint.Parse(maybeYear);
-                parsedProperty = true;
-                continue;
-            }
-
-            if ((part.StartsWith('S') || part.StartsWith('s')) && part.Length > 1 && Utils.isNumerical(part[1])) {
-                meta.season = uint.Parse(part[1..]);
-                parsedProperty = true;
-                continue;
-            }
-            if ((part.StartsWith('E') || part.StartsWith('e')) && part.Length > 1 && Utils.isNumerical(part[1])) {
-                meta.episode = uint.Parse(part[1..]);
-                parsedProperty = true;
-                continue;
-            }
-
-            if (!parsedProperty) {
-                if (title.Length > 0) {
-                    title.Append(' ');
-                }
-                title.Append(part);
-            }
-        }
-
-        meta.name = title.ToString();
-        return meta;
-    }
-
     public static uint countSeparateOccurrences(string text, char target) {
         bool lastMatched = false;
         uint count = 0;
