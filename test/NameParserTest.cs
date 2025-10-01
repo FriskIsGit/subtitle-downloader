@@ -23,6 +23,7 @@ public class NameParserTest {
         runMetadataParseTest(new Metadata {
             name = "Thursday",
             year = 2012,
+            releaseType = "BluRay",
             season = 1,
             providedSeason = true
         }, "Thursday(2012)Season1S01(1080pBluRayx265)");

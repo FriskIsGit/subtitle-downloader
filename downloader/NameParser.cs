@@ -8,6 +8,7 @@ public class NameParser {
     private const int MAX_EPISODES = 25000;
     
     private readonly string text;
+    
     private NameParser(string text) {
         this.text = text;
     }
@@ -20,13 +21,13 @@ public class NameParser {
             uint[] counts = { dots, dashes, spaces };
             char separator = '.';
             uint maxCount = 0;
-            for (var i = 0; i < counts.Length; i++) {
-                var c = counts[i];
+            for (var ci = 0; ci < counts.Length; ci++) {
+                var c = counts[ci];
                 if (c <= maxCount) {
                     continue;
                 }
                 maxCount = c;
-                switch (i) {
+                switch (ci) {
                     case 0: separator = '.'; break;
                     case 1: separator = '-'; break;
                     default: separator = ' '; break;
@@ -43,37 +44,30 @@ public class NameParser {
     private Metadata parseJoined() {
         var meta = new Metadata();
         StringBuilder title = new StringBuilder();
-        
-        bool parsingTitle = true, lastLower = false;
+
+        bool appendingTitle = true;
         for (int i = 0; i < text.Length; i++) {
             if (i > 0 && text[i] == '(') {
                 int closing = text.IndexOf(')', i + 1);
                 if (closing == -1) {
-                    if (parsingTitle) {
+                    if (appendingTitle) {
                         title.Append(text[i..]);
                         return meta;
                     }
                     continue;
                 }
                 
-                string inside = text[(i + 1)..closing];
-                var (isYear, year) = getYear(inside);
-                if (isYear) {
-                    i = closing;
-                    meta.year = year;
-                    parsingTitle = false;
-                    continue;
+                string inside = text[(i+1)..closing];
+                bool inferred = parseMetadata(inside, meta, true);
+                if (inferred) {
+                    appendingTitle = false;
                 }
 
-                var (matched, start, end) = Utils.LocationOfContained(inside, Metadata.RELEASE_TYPES);
-                if (matched) {
-                    meta.releaseType = inside[start..end];
-                    i += end;
-                }
+                i = closing;
                 continue;
             }
             
-            if (parsingTitle) {
+            if (appendingTitle) {
                 title.Append(text[i]);
             }
         }
@@ -82,32 +76,59 @@ public class NameParser {
         return meta;
     }
 
-    private static Metadata parseSeparated(string[] parts) {
+    // Attempts to parse the given string, inferring metadata, accounting for joined data
+    // Returns bool indicating whether anything was parsed.
+    private bool parseMetadata(string snippet, Metadata meta, bool joined) {
+        var (isYear, year) = getYear(snippet);
+        if (isYear) {
+            meta.year = year;
+            return true;
+        }
+
+        if (joined) {
+            var (matched, start, end) = Utils.LocationOfContained(snippet, Metadata.RELEASE_TYPES);
+            if (matched) {
+                meta.releaseType = snippet[start..end];
+                return true;
+            }
+        }
+        else {
+            if (Utils.EqualsAny(snippet, Metadata.RELEASE_TYPES)) {
+                meta.releaseType = snippet;
+                return true;
+            }
+        }
+
+        if (Utils.EqualsAny(snippet, Metadata.NETFLIX_IDENTIFIERS)) {
+            meta.netflix = true;
+            return true;
+        }
+
+        if (!joined) {
+            if (snippet.EndsWith("0p") || Utils.EqualsAny(snippet, Metadata.ENCODER_IDENTIFIERS)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private Metadata parseSeparated(string[] parts) {
         var meta = new Metadata();
-        StringBuilder title = new StringBuilder();
         bool appendingTitle = true;
+        StringBuilder title = new StringBuilder();
         for (var index = 0; index < parts.Length; index++) {
             var part = parts[index];
             if (Utils.isEnclosedBy(part, '(', ')')) {
                 part = part[1..^1];
                 appendingTitle = false;
             }
-            
-            if (index > 0 && Utils.EqualsAny(part, Metadata.NETFLIX_IDENTIFIERS)) {
-                meta.netflix = true;
-                appendingTitle = false;
-                continue;
-            }
-            
-            if (index > 0 && Utils.EqualsAny(part, Metadata.RELEASE_TYPES)) {
-                meta.releaseType = part;
-                appendingTitle = false;
-                continue;
-            }
 
-            if (part.EndsWith("0p") || Utils.EqualsAny(part, Metadata.ENCODER_IDENTIFIERS)) {
-                appendingTitle = false;
-                continue;
+            if (index > 0) {
+                bool inferred = parseMetadata(part, meta, false);
+                if (inferred) {
+                    appendingTitle = false;
+                }
             }
 
             if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) &&
