@@ -229,6 +229,17 @@ public class Utils {
         return false;
     }
     
+    // Returns the first index that doesn't satisfy predicate or str.Length
+    public static int IterateWhile(Func<char, bool> predicate, string str, int from) {
+        int i = from;
+        for (; i < str.Length; i++) {
+            if (!predicate(str[i])) {
+                break;
+            }
+        }
+        return i;
+    }
+    
     // Returns bool indicating if any candidate was matched, if found returns coordinates of start and (exclusive)end
     public static (bool, int, int) LocationOfContained(string target, params string[] candidates) {
         foreach (var candidate in candidates) {

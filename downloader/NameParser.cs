@@ -5,8 +5,7 @@ namespace subtitle_downloader.downloader;
 public class NameParser {
     private const int MIN_YEAR = 1900;
     private const int MAX_SEASONS = 50;
-    private const int MAX_EPISODES = 25000;
-    
+
     private readonly string text;
     
     private NameParser(string text) {
@@ -67,29 +66,47 @@ public class NameParser {
                 continue;
             }
             
+            if (i > 0 && !meta.providedSeason && i < text.Length-1 && (text[i] == 'S' || text[i] == 's')) {
+                int digitsEnd = Utils.IterateWhile(char.IsDigit, text, i+1);
+                if (digitsEnd == i+2 || digitsEnd == i+3) {
+                    uint season = uint.Parse(text[(i+1)..digitsEnd]);
+                    if (season <= MAX_SEASONS) {
+                        meta.season = season;
+                        meta.providedSeason = true;
+                        appendingTitle = false;
+                        i = digitsEnd-1;
+                        continue;
+                    }
+                }
+            }
+            
             if (appendingTitle) {
                 title.Append(text[i]);
             }
         }
-        
+
         meta.name = title.ToString().Trim();
+        // Parse metadata to gather any missing data
+        parseMetadata(text[meta.name.Length..], meta, true);
         return meta;
     }
 
     // Attempts to parse the given string, inferring metadata, accounting for joined data
     // Returns bool indicating whether anything was parsed.
-    private bool parseMetadata(string snippet, Metadata meta, bool joined) {
+    private static bool parseMetadata(string snippet, Metadata meta, bool joined) {
         var (isYear, year) = getYear(snippet);
-        if (isYear) {
+        if (isYear && year >= MIN_YEAR && meta.year == 0) {
             meta.year = year;
             return true;
         }
 
         if (joined) {
-            var (matched, start, end) = Utils.LocationOfContained(snippet, Metadata.RELEASE_TYPES);
-            if (matched) {
-                meta.releaseType = snippet[start..end];
-                return true;
+            if (meta.releaseType == "") {
+                var (matched, start, end) = Utils.LocationOfContained(snippet, Metadata.RELEASE_TYPES);
+                if (matched) {
+                    meta.releaseType = snippet[start..end];
+                    return true;
+                }
             }
         }
         else {
@@ -97,19 +114,31 @@ public class NameParser {
                 meta.releaseType = snippet;
                 return true;
             }
-        }
-
-        if (Utils.EqualsAny(snippet, Metadata.NETFLIX_IDENTIFIERS)) {
-            meta.netflix = true;
-            return true;
-        }
-
-        if (!joined) {
+            
             if (snippet.EndsWith("0p") || Utils.EqualsAny(snippet, Metadata.ENCODER_IDENTIFIERS)) {
                 return true;
             }
+            
+            if (snippet.Length >= 2 && (snippet[0] == 'S' || snippet[0] == 's')) {
+                int digitsEnd = Utils.IterateWhile(char.IsDigit, snippet, 1);
+                if (digitsEnd == 2 || digitsEnd == 3) {
+                    uint season = uint.Parse(snippet[1..digitsEnd]);
+                    if (season <= MAX_SEASONS) {
+                        meta.season = season;
+                        meta.providedSeason = true;
+                        return true;
+                    }
+                }
+                // skip, it's either not followed by a digit or too long, or too high
+            }
+            
+            // Unable to reliable extract this information if the string is joined
+            if (Utils.EqualsAny(snippet, Metadata.NETFLIX_IDENTIFIERS)) {
+                meta.netflix = true;
+                return true;
+            }
         }
-
+        
         return false;
     }
 
@@ -219,7 +248,7 @@ public class NameParser {
 public class Metadata {
     public static readonly string[] RELEASE_TYPES = {
         "BluRay", "Blu-ray", "BDRip", "BrRip", "BRRip", "DVDRip", "DVDR",
-        "WEB-DL", "WEBDL", "WEB", "WEBRip", "WEB-Rip", 
+        "WEB-DL", "WEBDL", "WEBRip", "WEB-Rip", "WEB",
         "HDTV", "DVBRip", "PPVRip"
     };
     public static readonly string[] NETFLIX_IDENTIFIERS = { "nf", "NF", "netflix", "Netflix" };

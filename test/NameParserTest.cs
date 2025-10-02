@@ -19,7 +19,6 @@ public class NameParserTest {
         runGetYearTest(false, 0, "205");
         runGetYearTest(false, 0, "-2005");
         
-        runMetadataParseTest(new Metadata { name = "Batman" }, "Batman");
         runMetadataParseTest(new Metadata {
             name = "Thursday",
             year = 2012,
@@ -27,7 +26,8 @@ public class NameParserTest {
             season = 1,
             providedSeason = true
         }, "Thursday(2012)Season1S01(1080pBluRayx265)");
-        
+        runMetadataParseTest(new Metadata { name = "Batman" }, "Batman");
+
         runMetadataParseTest(new Metadata {
             name = "Crazy",
             releaseType = "WEBRip",
@@ -37,6 +37,7 @@ public class NameParserTest {
 
         runMetadataParseTest(new Metadata { name = "Just The Title" }, "Just-The-Title-");
         // TODO: Correct metadata - infer year from title
+        // TODO: Correct metadata - clean title by matching title prefix provided by user
         runMetadataParseTest(new Metadata {
             name = "The Big Score",
             year = 1978,
@@ -66,6 +67,13 @@ public class NameParserTest {
             year = 1966,
             releaseType = "Blu-ray",
         }, "Batman 1966 (Test) 480p AVC DTS-HD Blu-ray");
+        
+        runMetadataParseTest(new Metadata {
+            name = "Thrones of Game",
+            year = 2007,
+            providedSeason = true,
+            season = 3
+        }, "Thrones of Game 2007 (Test) S3");
         
         runMetadataParseTest(new Metadata {
             name = "Batman The Movie",
