@@ -84,13 +84,75 @@ class ProgramFlow {
         if (!subtitleResponse.status) {
             Console.WriteLine("WARN: Status response does not indicate success");
         }
-        foreach (var subResult in subtitleResponse.subtitles) {
 
+        List<SubtitleResult> subtitles = filterSubDLSubtitlesAddMetadata(subtitleResponse.subtitles);
+        if (subtitles.Count == 0) {
+            Utils.FailExit("No subtitles remained after filtering.");
         }
+
+        var selected = selectSubDLSubtitle(subtitles, args);
 
         return new List<string>();
     }
+
+    private List<SubtitleResult> filterSubDLSubtitlesAddMetadata(List<SubtitleResult> subtitles) {
+        List<SubtitleResult> filtered = new List<SubtitleResult>();
+        foreach (var subResult in subtitles) {
+            Metadata meta = NameParser.parse(subResult.releaseName);
+            if (meta.isMovie() != args.isMovie) {
+                continue;
+            }
+
+            if (!args.isMovie && meta.season != args.season) {
+                continue;
+            }
+            
+            if (args.year != 0 && meta.year != 0 && args.year != meta.year) {
+                continue;
+            }
+
+            subResult.metadata = meta;
+            filtered.Add(subResult);
+        }
+        return filtered;
+    }
     
+    private static SubtitleResult selectSubDLSubtitle(List<SubtitleResult> subtitles, Arguments args) {
+        return args.autoSelect
+            ? subtitles[0]
+            : userSelectsSubDLSubtitle(subtitles, args.textToContain);
+    }
+
+    private static SubtitleResult userSelectsSubDLSubtitle(List<SubtitleResult> subtitles, string textToContain) {
+        if (subtitles.Count == 1) {
+            Console.WriteLine("Single result, proceeding.");
+            return subtitles[0];
+        }
+
+        string table = Utils.prettyFormatSubDLSubtitlesInTable(subtitles);
+        Console.WriteLine(table);
+        
+        Console.WriteLine($"Select subtitle to download [{1}-{subtitles.Count}]:");
+        while (true) {
+            string? input = Console.ReadLine();
+            if (input is null || input.Length == 0) {
+                Console.WriteLine("Specify a number, try again.");
+                continue;
+            }
+
+            if (!int.TryParse(input, out int num)) {
+                Console.WriteLine("Not a number, try again.");
+                continue;
+            }
+
+            if (num < 1 || num > subtitles.Count) {
+                Console.WriteLine("Out of bounds number, try again.");
+                continue;
+            }
+            return subtitles[num - 1];
+        }
+    }
+
     private static string formatPathsAsList(List<string> paths) {
         StringBuilder format = new StringBuilder();
         foreach (string path in paths) {

@@ -162,6 +162,7 @@ public class SubtitleResult {
     public string releaseName, name, lang, author, language;
     private string url, subtitlePage;
     public int season;
+    public Metadata metadata;
     
     public static SubtitleResult fromJson(JsonNode json) {
         SubtitleResult result = new SubtitleResult();

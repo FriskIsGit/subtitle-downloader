@@ -276,6 +276,10 @@ public class Metadata {
                providedEpisode == other.providedEpisode;
     }
 
+    public bool isMovie() {
+        return !providedSeason;
+    }
+    
     public override string ToString() {
         var parts = new List<string>();
 

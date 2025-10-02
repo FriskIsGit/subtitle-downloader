@@ -274,4 +274,59 @@ public class Utils {
         }
         return url;
     }
+
+    public static string prettyFormatSubDLSubtitlesInTable(List<SubtitleResult> subtitles) {
+        int largestLink = 0;
+        int largestAuthor = 8;
+        foreach (var sub in subtitles) {
+            largestAuthor = Math.Max(sub.author.Length, largestAuthor);
+            largestLink = Math.Max(sub.getUrl().Length, largestLink);
+        }
+
+        
+        int largestPositionNum = subtitles.Count.ToString().Length;
+
+        largestLink += 2;
+        largestAuthor += 2;
+        largestPositionNum += 2;
+
+        string[] headers = { " ", "Download URL", "Author", "Release Type" };
+        int[] lengths = { largestPositionNum, largestLink, largestAuthor, 14 };
+        StringBuilder separator = GetTableHorizontalSeparator(lengths);
+
+        StringBuilder table = new StringBuilder(128);
+        table.Append(separator);
+        table.Append("\n|");
+        // HEADER FORMATTING
+        for (var i = 0; i < lengths.Length; i++) {
+            int length = lengths[i];
+
+            table.Append(CenterPad(headers[i], length, true));
+            table.Append('|');
+        }
+
+        table.Append('\n');
+        table.Append(separator);
+        table.Append('\n');
+
+    
+        int leftSpaces = (lengths[3] - subtitles[0].author.Length) / 2;
+        // SUBTITLE ROWS
+        for (var s = 0; s < subtitles.Count; s++) {
+            var sub = subtitles[s];
+            int index = s + 1;
+            table.Append('|');
+            table.Append(CenterPad(index.ToString(), lengths[0], false));
+            table.Append('|');
+            table.Append(CenterPad(sub.getUrl(), lengths[1], true));
+            table.Append('|');
+            table.Append(CenterPad(sub.author, lengths[2], true));
+            table.Append('|');
+            table.Append(CenterPad(sub.metadata.releaseType, lengths[3], false));
+            table.Append("|\n");
+        }
+
+        table.Append(separator);
+        return table.ToString();
+    }
 }
