@@ -546,8 +546,8 @@ public struct Arguments {
         help.Append(formatOption(EXTENSION_FILTER_FLAGS, "Filter subtitles by extension"));
         help.Append(formatOption(CONTAINS_FLAGS, "Filter subtitles by text contained in filename"));
         help.Append(formatOption(AUTO_SELECT_FLAGS, "Automatically selects subtitle to download"));
-        help.Append(formatOption(FROM_SUBTITLE_FLAGS, "Parses a subtitle file (use with --shift and --convert-to)"));
-        help.Append(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename"));
+        help.Append(formatOption(FROM_SUBTITLE_FLAGS, "Reads a subtitle file from disk (use with --shift, --convert-to)"));
+        help.Append(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename (excluding episode)"));
         help.Append(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
         help.Append(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
         help.Append(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
@@ -561,13 +561,9 @@ public struct Arguments {
         help.Append(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
         help.Append(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         help.AppendLine();
-        help.AppendLine("To display available subtitle languages and their codes use: -languages");
+        help.AppendLine("-languages       Displays all OpenSubtitles languages & codes");
         help.AppendLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
         help.AppendLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
-        help.AppendLine("File name provided with the '--extract' flag should have an extension & follow any of the three formats:");
-        help.AppendLine(" - dotted: Series.Name.Year.SxEy");
-        help.AppendLine(" - spaced: Production Name (Year) SxEy");
-        help.AppendLine(" - dashed: Production-Name-Year-SxEy");
         help.AppendLine();
         help.AppendLine("Usage example:");
         help.AppendLine($"  {programName} \"The Godfather\" -y 1972");

@@ -3,7 +3,7 @@
 namespace subtitle_downloader.downloader; 
 
 public class SubDlAPI {
-    public const string API_KEY = "";
+    public const string API_KEY = "fBbDrLROg5vh6xfq" + "MgsFbxKFmtph6A2g";
     private const string API_ENDPOINT = "https://api.subdl.com/api/v1/subtitles";
     public const string DOWNLOAD_ENDPOINT = "https://dl.subdl.com";
     public const string DOMAIN = "https://subdl.com";

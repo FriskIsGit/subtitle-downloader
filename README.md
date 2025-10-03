@@ -6,7 +6,7 @@
 
 ## Arguments
 
-- `--lang` - specifies subtitle language (recommended)
+- `--lang` - specifies subtitle language (recommended
 - `-y` `--year` - the year a movie or a tv series was released (optional)
 - `--filter` - filter subtitles by extension
 - `--contains` `--has` - filter subtitles by text contained in filename
@@ -15,9 +15,9 @@
 - `--to` `--convert-to` - converts to the specified subtitle format
 - `--shift` - shifts all timestamps by an offset (ms)
 - `--extract` - extracts arguments from a file name
+- `--provider` - select provider
 - `--dest` `--out` `-o` - directory where downloaded files are to be placed
 - `--clean` `--cleanup` - remove empty cues
-
 
 - `-s` `-S` `--season` - season number (required for tv series)
 - `-e` `-E` `--episode` - episode number (required for tv series)
