@@ -467,8 +467,8 @@ public class Season {
     }
 }
 public class Episode {
-    private const string DOMAIN = "https://opensubtitles.org";
-    public int number = 0;
+    private const string DOMAIN = "https://dl.opensubtitles.org";
+    public int number;
     public string name = "";
     public string url = "";
 

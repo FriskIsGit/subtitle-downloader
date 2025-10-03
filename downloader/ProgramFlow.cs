@@ -60,18 +60,18 @@ class ProgramFlow {
         var timer = Stopwatch.StartNew();
         SimpleResponse response = subDlApi.sendQuery(query);
         var taken = timer.ElapsedMilliseconds;
-        Console.WriteLine("Received query response in " + taken + " ms");
+        // Console.WriteLine("Received query response in " + taken + " ms");
         if (response.statusCode == HttpStatusCode.TooManyRequests) {
             Utils.FailExit("Too many requests");
         }
-        Console.WriteLine(response.statusCode);
-        Console.WriteLine(response.content);
+        // Console.WriteLine(response.statusCode);
+        // Console.WriteLine(response.content);
         
         if (response.content.StartsWith("undefined is not an object")) {
             Utils.FailExit("ERROR: Likely the token is invalid or wasn't provided.");
         }
         
-        File.WriteAllText("SubDLResponse" + args.title + ".json", response.content);
+        // File.WriteAllText("SubDLResponse" + args.title + ".json", response.content);
         JsonNode? node = null;
         try {
             node = JsonNode.Parse(response.content);
@@ -91,8 +91,26 @@ class ProgramFlow {
         }
 
         var selected = selectSubDLSubtitle(subtitles, args);
+        var download = subDlApi.downloadSubtitle(selected.getUrl(), args.outputDirectory);
+        try {
+            download.Wait();
+        }
+        catch (Exception e) {
+            Utils.FailExit(e.Message);
+        }
+        if (download.Result.isError()) {
+            Utils.FailExit("The download failed!");
+        }
 
-        return new List<string>();
+        string zip = download.Result.filename;
+        Console.WriteLine($"Unzipping {zip}");
+        List<string> extracted = Utils.unzip(zip, args.outputDirectory);
+        if (extracted.Count == 0) {
+            Utils.FailExit("No elements were extracted from the zip file! Is the zip empty?");
+        }
+        Console.WriteLine("Deleting zip.");
+        File.Delete(zip);
+        return extracted;
     }
 
     private List<SubtitleResult> filterSubDLSubtitlesAddMetadata(List<SubtitleResult> subtitles) {
@@ -258,7 +276,8 @@ class ProgramFlow {
         // Series fetching logic
         SimpleResponse seasonsResponse = openApi.getHtml(pageUrl);
         if (seasonsResponse.isError()) {
-            Utils.FailExit("Failed to fetch seasons. URL: " + seasonsResponse.lastLocation);
+            string urlInfo = string.Empty == seasonsResponse.lastLocation ? ". URL: " + seasonsResponse.lastLocation : "";
+            Utils.FailExit("Failed to fetch seasons. Status: " + seasonsResponse.statusCode + urlInfo);
         }
         string seasonsHtml = seasonsResponse.content;
         List<Season> seasons = SubtitleScraper.ScrapeSeriesTable(seasonsHtml);
@@ -317,9 +336,6 @@ class ProgramFlow {
     // Returns the paths of the downloaded then unzipped files
     private List<string> downloadSubtitle(string resourceUrl) {
         string outputDir = args.outputDirectory;
-        // This internally checks if directory exists anyway
-        Directory.CreateDirectory(outputDir);
-        
         var download = openApi.downloadSubtitle(resourceUrl, outputDir);
         try {
             download.Wait();

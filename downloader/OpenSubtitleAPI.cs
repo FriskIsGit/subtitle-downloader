@@ -6,8 +6,8 @@ using System.Text.Json.Nodes;
 namespace subtitle_downloader.downloader; 
 
 public class OpenSubtitleAPI {
-    private const string SUBTITLE_SUGGEST = "https://www.opensubtitles.org/libs/suggest.php?format=json3";
-    private const string SUBTITLE_SEARCH = "https://www.opensubtitles.org/en/search2";
+    private const string SUBTITLE_SUGGEST = "https://dl.opensubtitles.org/libs/suggest.php?format=json3";
+    public const string SUBTITLE_SEARCH = "https://dl.opensubtitles.org/en/ssearch";
 
     private readonly ExtendedHttpClient client = new(new HttpClientHandler { AllowAutoRedirect = true }) {
         Timeout = TimeSpan.FromSeconds(60)
@@ -71,6 +71,8 @@ public class OpenSubtitleAPI {
     }
 
     public async Task<SimpleDownloadResponse> downloadSubtitle(string resourceUrl, string outputDir) {
+        // This internally checks if directory exists anyway
+        Directory.CreateDirectory(outputDir);
         HttpResponseMessage response = await client.GetAsync(resourceUrl);
         string filename = "unknown.zip";
         ContentDispositionHeaderValue? contentDisposition = response.Content.Headers.ContentDisposition;
@@ -128,7 +130,8 @@ public struct Production {
         if (langId.Length > 3) {
             langId = langId[..3];
         }
-        return $"https://www.opensubtitles.org/en/search/sublanguageid-{langId}/idmovie-{id}";
+        
+        return $"{OpenSubtitleAPI.SUBTITLE_SEARCH}/sublanguageid-{langId}/idmovie-{id}";
     }
     
     public static (string title, uint year) ParseTitleYear(string productionName) {

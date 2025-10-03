@@ -15,6 +15,24 @@ public class SubDlAPI {
     public SimpleResponse sendQuery(Query query) {
         return client.getJson(API_ENDPOINT + query.toPathParams());
     }
+    
+    public async Task<SimpleDownloadResponse> downloadSubtitle(string resourceUrl, string outputDir) {
+        // This internally checks if directory exists anyway
+        Directory.CreateDirectory(outputDir);
+        HttpResponseMessage response = await client.GetAsync(resourceUrl);
+        string filename = Path.GetFileName(resourceUrl);
+        if (!response.IsSuccessStatusCode) {
+            Console.WriteLine("Received status code: " + response.StatusCode);
+            Console.WriteLine(response.Content);
+            return SimpleDownloadResponse.fail(response.StatusCode);
+        }
+
+        var path = Path.Combine(outputDir, filename);
+        await using var stream = await client.GetStreamAsync(resourceUrl);
+        await using var fs = new FileStream(path, FileMode.Create);
+        await stream.CopyToAsync(fs);
+        return SimpleDownloadResponse.ok(path);
+    }
 }
 
 public class Query {
@@ -45,9 +63,10 @@ public class Query {
             }
         }
 
-        if (args.downloadPack) {
+        // If fullSeason is applied no results are generated
+        /*if (args.downloadPack) {
             fullSeason = true;
-        }
+        }*/
 
         languages = args.language.Length > 2 ? args.language[..2] : args.language;
         languages = languages.ToUpper();

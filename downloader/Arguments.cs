@@ -449,7 +449,7 @@ public struct Arguments {
                     return false;
                 }
             }
-            else if (!providedSeason || !providedEpisode) {
+            else if (!providedSeason || (!providedEpisode && provider == Provider.OpenSubtitles)) {
                 Console.WriteLine(
                     "For TV series season and episode arguments are required unless it's a pack download");
                 return false;
