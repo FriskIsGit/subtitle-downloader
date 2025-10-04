@@ -5,6 +5,8 @@ namespace subtitle_downloader.downloader;
 
 public class Converter {
     private const int SUBTITLE_CAPACITY = 1024;
+    private const int LYRIC_CAPACITY = 256;
+    private static readonly string[] LRC_TAGS = {"ti", "ar", "al", "au", "lr", "length", "by", "offset", "re", "tool", "ve"};
     /*
      Each subtitle has four parts in the SRT file.
        1. A numeric counter indicating the number or position of the subtitle.
@@ -47,6 +49,8 @@ public class Converter {
                 case "ssa":
                 case "ass":
                     return parseSubStationAlpha(reader);
+                case "lrc":
+                    return parseLRC(reader);
                 case "tmp":
                     return parseTimeBased(reader);
                 case "whisper_jax":
@@ -57,6 +61,77 @@ public class Converter {
             Utils.FailExit("Unsupported extension: " + extension);
             throw new Exception("UNREACHABLE");
         }
+    }
+
+    // https://en.wikipedia.org/wiki/LRC_(file_format)#Core_format
+    // [tag: value]
+    // [mm:ss.xx]lyric
+    private static (SubtitleFile, Exception?) parseLRC(StreamReader reader) {
+        // Currently supports just one timestamp per line
+        // Length (if provided) could be parsed from the tag to set the END_TIMESTAMP
+        var subtitles = new List<Subtitle>(LYRIC_CAPACITY);
+        bool firstCue = true;
+        while (!reader.EndOfStream) {
+            string? line = reader.ReadLine();
+            if (line == null) {
+                break;
+            }
+
+            if (string.Empty == line || line[0] != '[') {
+                continue;
+            }
+
+            line = line.TrimEnd();
+            if (line[^1] == ']') {
+                bool isTag = false;
+                foreach (var tag in LRC_TAGS) {
+                    if (line[1..^1].StartsWith(tag)) {
+                        isTag = true;
+                        break;
+                    }
+                }
+                if (isTag) {
+                    continue;
+                }
+            }
+            
+            if (line.Length < 11) {
+                // Silently skip empty cues
+                continue;
+            }
+
+            int seconds = 0, hundreths = 0;
+            bool numbersOk = int.TryParse(line[1..3], out var minutes) &&
+                             int.TryParse(line[4..6], out seconds) && 
+                             int.TryParse(line[7..9], out hundreths);
+
+            if (!numbersOk) {
+                Utils.FailExit("Failed to parse LRC timestamp in line: " + line);
+            }
+            
+            int hours = minutes / 60;
+            minutes %= 60;
+            var start = new Timecode(hours, minutes, seconds, hundreths * 10);
+            string content = line[10..];
+            if (content[0] == ' ') {
+                content = content[1..];
+            }
+            var sub = new Subtitle(start, Timecode.END_CODE, content);
+
+            if (firstCue) {
+                firstCue = false;
+                subtitles.Add(sub);
+                continue;
+            }
+
+            Subtitle lastSub = subtitles[^1];
+            lastSub.end = sub.start.copy();
+
+            subtitles.Add(sub);
+        }
+
+        var subtitleFile = new SubtitleFile("lrc", subtitles);
+        return (subtitleFile, null);
     }
 
     private static string? detectSubtitleFormat(StreamReader reader) {
@@ -80,6 +155,10 @@ public class Converter {
             return null;
         }
 
+        if (hasLRCStructure(firstLine)) {
+            return "lrc";
+        }
+        
         if (hasMPLStructure(firstLine, 1)) {
             return "mpl";
         }
@@ -116,6 +195,32 @@ public class Converter {
     
     private static bool hasWhisperStructure(string line) {
         return line.StartsWith('[') && line.Contains("-->") && line.Contains(']');
+    }
+
+    private static bool hasLRCStructure(string line) {
+        // Minimal representation is [tr:v]
+        if (line.Length < 6 || line[0] != '[') {
+            return false;
+        }
+
+        bool couldBeTag = line[^1] == ']';
+        if (couldBeTag) {
+            foreach (var tag in LRC_TAGS) {
+                if (line[1..^1].StartsWith(tag)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        // Minimal representation is [mm:ss.xx]l
+        if (line.Length < 11) {
+            return false;
+        }
+
+        bool isLrcTimestamp = Utils.isNumerical(line[1..3]) && line[3] == ':' &&
+                              Utils.isNumerical(line[4..6]) && line[6] == '.' &&
+                              Utils.isNumerical(line[7..9]) && line[9] == ']';
+        return isLrcTimestamp;
     }
 
     private static bool hasMPLStructure(string line, int version) {

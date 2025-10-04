@@ -72,6 +72,7 @@ dotnet run
 | MPL2     | ✔️      | ️              |
 | SSA      | ✔️      | ️              |
 | TMP      | ✔️      | ️              |
+| LRC      | ✔️      | ️              |
 | WHISPER  | ✔️      | ️              |
 
 
