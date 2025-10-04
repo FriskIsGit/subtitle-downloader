@@ -85,6 +85,9 @@ class ProgramFlow {
             Console.WriteLine("WARN: Status response does not indicate success");
         }
 
+        if (subtitleResponse.subtitles.Count == 0) {
+            Utils.FailExit("No subtitles found.");
+        }
         List<SubtitleResult> subtitles = filterSubDLSubtitlesAddMetadata(subtitleResponse.subtitles);
         if (subtitles.Count == 0) {
             Utils.FailExit("No subtitles remained after filtering.");

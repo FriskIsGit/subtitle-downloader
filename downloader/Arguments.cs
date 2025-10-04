@@ -554,7 +554,7 @@ public struct Arguments {
         help.Append(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
         help.Append(formatOption(PROVIDER_FLAGS, "Force subtitle provider, one of: OpenSubtitles, SubDL"));
         help.Append(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
-        help.Append(formatOption(LANGUAGE_FLAGS, "Displays all OpenSubtitles languages & codes"));
+        help.Append(formatOption(AVAILABLE_LANGUAGES_FLAGS, "Displays all OpenSubtitles languages & codes"));
 
         help.AppendLine();
         help.AppendLine("TV series options:");
