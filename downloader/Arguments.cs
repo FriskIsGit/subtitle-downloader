@@ -554,6 +554,8 @@ public struct Arguments {
         help.Append(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
         help.Append(formatOption(PROVIDER_FLAGS, "Force subtitle provider, one of: OpenSubtitles, SubDL"));
         help.Append(formatOption(HELP_FLAGS, "Display this information (regardless of flag order)"));
+        help.Append(formatOption(LANGUAGE_FLAGS, "Displays all OpenSubtitles languages & codes"));
+
         help.AppendLine();
         help.AppendLine("TV series options:");
         help.Append(formatOption(SEASON_FLAGS, "Season number of the tv series"));
@@ -561,7 +563,6 @@ public struct Arguments {
         help.Append(formatOption(LIST_FLAGS, "Pretty print seasons and episodes"));
         help.Append(formatOption(PACK_FLAGS, "Download season as pack (<= 50 episodes) (faulty)"));
         help.AppendLine();
-        help.AppendLine("-languages       Displays all OpenSubtitles languages & codes");
         help.AppendLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
         help.AppendLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
         help.AppendLine();
@@ -610,8 +611,9 @@ public struct Arguments {
             str.Append($"({year}) ");
         }
         if (!isMovie) {
+            str.Append($"S{season} ");
             string ep;
-            if (downloadPack) {
+            if (downloadPack || episodes.Count == 0) {
                 ep = "[PACK]";
             }
             else if (episodes.Count > 1) {
@@ -620,7 +622,7 @@ public struct Arguments {
             else {
                 ep = episodes[0].ToString();
             }
-            str.Append($"S{season} E{ep} ");
+            str.Append($"E{ep} ");
         }
 
         if (!subtitleFromFile) {

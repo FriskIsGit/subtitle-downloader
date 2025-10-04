@@ -91,7 +91,14 @@ public class NameParserTest {
             year = 2010
         }, "Peepli [Live] 2010");
         
-        
+        runMetadataParseTest(new Metadata {
+            name = "Episode Test",
+            year = 1977,
+            season = 4,
+            providedSeason = true,
+            episode = 999,
+            providedEpisode = true,
+        }, "Episode Test.(1977).S4E999");
 
 
         printResults();

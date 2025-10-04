@@ -160,31 +160,27 @@ public class NameParser {
                 }
             }
 
-            if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) &&
+            if (part.Length >= 4 && (part[0] == 'S' || part[0] == 's') && char.IsDigit(part[1]) && 
                 char.IsDigit(part[^1])) {
-                int episodeIndex = part.IndexOf('e', 2);
-                if (episodeIndex == -1) {
-                    episodeIndex = part.IndexOf('E', 2);
-                }
-
-                string seasonStr = part[1..episodeIndex];
-                if (!uint.TryParse(seasonStr, out var season)) {
-                    Console.WriteLine("Failed to parse season number, given: " + seasonStr);
+                // Could handle ranges such as S01E1118-1119
+                int seasonEnd = Utils.IterateWhile(char.IsDigit, part, 2);
+                if (seasonEnd != 2 && seasonEnd != 3) {
                     continue;
                 }
 
-                meta.season = season;
+                meta.season = uint.Parse(part[1..seasonEnd]);
                 meta.providedSeason = true;
-                string episodeStr = part[(episodeIndex + 1)..];
-                if (!uint.TryParse(episodeStr, out var episode)) {
-                    Console.WriteLine("Failed to parse episode number, given: " + episodeStr);
-                    continue;
-                }
-
-                meta.episode = episode;
-                meta.providedEpisode = true;
-
                 appendingTitle = false;
+                
+                if (part[seasonEnd] == 'E' || part[seasonEnd] == 'e') {
+                    int epEnd = Utils.IterateWhile(char.IsDigit, part, seasonEnd+1);
+                    if (epEnd == seasonEnd+1) {
+                        continue;
+                    }
+                    meta.episode = uint.Parse(part[(seasonEnd+1)..epEnd]);
+                    meta.providedEpisode = true;
+                }
+                
                 continue;
             }
 
