@@ -7,7 +7,7 @@ namespace subtitle_downloader.downloader;
 
 public class OpenSubtitleAPI {
     private const string SUBTITLE_SUGGEST = "https://dl.opensubtitles.org/libs/suggest.php?format=json3";
-    public const string SUBTITLE_SEARCH = "https://dl.opensubtitles.org/en/ssearch";
+    public const string SUBTITLE_SEARCH = "https://dl.opensubtitles.org/en/search2";
 
     private readonly ExtendedHttpClient client = new(new HttpClientHandler { AllowAutoRedirect = true }) {
         Timeout = TimeSpan.FromSeconds(60)
