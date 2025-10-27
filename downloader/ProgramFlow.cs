@@ -228,6 +228,11 @@ class ProgramFlow {
             Console.WriteLine("Shifting by " + args.shiftMs + "ms");
             subtitleFile.shiftBy(args.shiftMs);
         }
+        
+        if (args.speed != 1) {
+            Console.WriteLine("Changing subtitle speed by a factor of " + args.speed);
+            subtitleFile.applySpeed(args.speed);
+        }
 
         if (args.cleanup) {
             int empties = subtitleFile.removeEmptySubtitles();

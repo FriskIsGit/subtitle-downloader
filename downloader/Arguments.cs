@@ -15,6 +15,7 @@ public struct Arguments {
     private static readonly string[] FROM_SUBTITLE_FLAGS = { "--from", "--subtitle" };
     private static readonly string[] SHIFT_FLAGS = { "--shift" };
     private static readonly string[] CONVERT_FLAGS = { "--to", "--convert-to" };
+    private static readonly string[] SPEED_FLAGS = { "--speed" };
     private static readonly string[] OUTPUT_FLAGS = { "--dest", "--out", "-o" };
     private static readonly string[] CLEANUP_FLAGS = { "--clean", "--cleanup"};
     private static readonly string[] PROVIDER_FLAGS = { "--provider" };
@@ -40,6 +41,8 @@ public struct Arguments {
 
     private const int MAX_DOWNLOADS = 20;
 
+    private const double MIN_SPEED = 0.1;
+    private const double MAX_SPEED = 100;
     // 12 hour limits
     private const int BACKWARD_SHIFT_CAP = -12 * 60 * 60 * 1000;
     private const int FORWARD_SHIFT_CAP = 12 * 60 * 60 * 1000;
@@ -58,6 +61,7 @@ public struct Arguments {
     public uint year = 0;
 
     public int shiftMs = 0;
+    public double speed = 1;
 
     public bool subtitleFromFile = false;
     public bool convert = false;
@@ -288,6 +292,20 @@ public struct Arguments {
 
                 continue;
             }
+            
+            if (EqualsAny(currentArg, SPEED_FLAGS)) {
+                bool hasNext = i + 1 < args.Length;
+                if (!hasNext) {
+                    Utils.FailExit("Speed factor was expected. Help: --speed <factor>");
+                }
+
+                string factor = args[i + 1].Replace("x", "", StringComparison.OrdinalIgnoreCase);
+                if (double.TryParse(factor, out double speed)) {
+                    arguments.speed = speed;
+                    i++;
+                }
+                continue;
+            }
 
             if (EqualsAny(currentArg, CONVERT_FLAGS)) {
                 EnsureNextArgument("Subtitle extension was expected. Help: --convert-to <extension>", i, args.Length);
@@ -482,6 +500,18 @@ public struct Arguments {
                 return false;
             }
         }
+        
+        if (speed != 1) {
+            if (speed < MIN_SPEED) {
+                Console.WriteLine("The speed factor is too small, min is " + MIN_SPEED);
+                return false;
+            }
+
+            if (speed > MAX_SPEED) {
+                Console.WriteLine("The speed factor is too big, max is " + MAX_SPEED);
+                return false;
+            }
+        }
 
         if (convert && !SUBTITLE_FORMATS.Contains(convertToExtension)) {
             Console.WriteLine($"Extension '{convertToExtension}' doesn't match any recognized subtitle formats!");
@@ -528,7 +558,7 @@ public struct Arguments {
 
     public readonly bool requiresModifications(string originalExt = "") {
         bool mayRequireConverting = convert && (originalExt == "" || convertToExtension != originalExt);
-        return shiftMs != 0 || mayRequireConverting || cleanup;
+        return speed != 1 || shiftMs != 0 || mayRequireConverting || cleanup;
     }
 
     public static void PrintHelp() {
@@ -550,6 +580,7 @@ public struct Arguments {
         help.Append(formatOption(EXTRACT_ARGS_FLAGS, "Extracts production details from filename (excluding episode)"));
         help.Append(formatOption(SHIFT_FLAGS, "Shifts subtitles in time by [+/- ms]"));
         help.Append(formatOption(CONVERT_FLAGS, "Subtitle format to convert to [srt/vtt]"));
+        help.Append(formatOption(SPEED_FLAGS, "Change subtitle timing by a given factor (example: x2)"));
         help.Append(formatOption(OUTPUT_FLAGS, "Destination directory where subtitles will be placed"));
         help.Append(formatOption(CLEANUP_FLAGS, "Removes empty subtitles (cues)"));
         help.Append(formatOption(PROVIDER_FLAGS, "Force subtitle provider, one of: OpenSubtitles, SubDL"));
@@ -565,6 +596,7 @@ public struct Arguments {
         help.AppendLine();
         help.AppendLine("Season, episode and year arguments can be joined with numbers (e.g. -S2).");
         help.AppendLine("Episode numbers can be provided both as values and inclusive ranges (comma delimited e.g. -e 1,3-5,7).");
+        help.AppendLine("How to obtain speed factor: original_length / remixed_length = speed_factor");
         help.AppendLine();
         help.AppendLine("Usage example:");
         help.AppendLine($"  {programName} \"The Godfather\" -y 1972");

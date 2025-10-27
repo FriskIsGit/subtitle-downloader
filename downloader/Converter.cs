@@ -845,6 +845,33 @@ public class SubtitleFile {
     public int count() {
         return subtitles.Count;
     }
+
+    // original_length / remixed_length = speed_factor
+    public void applySpeed(double speedFactor) {
+        if (subtitles.Count == 0) {
+            return;
+        }
+        double timescale = 1 / speedFactor;
+        Timecode lastScaledEnd = Timecode.ZERO_CODE;
+        Timecode lastEnd = Timecode.ZERO_CODE;
+        
+        foreach (Subtitle sub in subtitles) {
+            int waitMs = sub.start.toMillis() - lastEnd.toMillis();
+            int cueMs = sub.end.toMillis() - sub.start.toMillis();
+            
+            var scaledWaitMs = waitMs * timescale;
+            var scaledCueMs = cueMs * timescale;
+
+            var scaledStart = Timecode.fromMillis(lastScaledEnd.toMillis() + (int)scaledWaitMs);
+            var scaledEnd = Timecode.fromMillis(lastScaledEnd.toMillis() + (int)scaledWaitMs + (int)scaledCueMs);
+            
+            lastEnd = sub.end;
+            lastScaledEnd = scaledEnd;
+            
+            sub.start = scaledStart;
+            sub.end = scaledEnd;
+        }
+    }
 }
 
 public class Subtitle {
@@ -857,7 +884,7 @@ public class Subtitle {
         this.end = end;
         this.content = content;
     }
-
+    
     // Styling examples
     // html tags: <b> <i> <u> <c> <v> <ruby> <rt>
     // mpl tags: {y:b} {y:i} {y:u}
@@ -911,6 +938,13 @@ public class Timecode {
         return new Timecode(hours, minutes, seconds, milliseconds);
     }
 
+    public int toMillis() {
+        int hoursMs = hours * 60 * 60 * 1000;
+        int minutesMs = minutes * 60 * 1000;
+        int secondsMs = seconds * 1000;
+        return hoursMs + minutesMs + secondsMs + milliseconds;
+    }
+    
     public static Timecode fromSeconds(int seconds) {
         int hr = 0, m = 0, s = 0;
         if (seconds >= 3600) {
@@ -918,13 +952,30 @@ public class Timecode {
             seconds %= 3600;
         }
         if (seconds >= 60) {
-            m = (seconds / 60) | 0;
+            m = seconds / 60;
             seconds %= 60;
         }
         if (seconds > 0) {
             s = seconds;
         }
         return new Timecode(hr, m, s, 0);
+    }
+    
+    public static Timecode fromMillis(int ms) {
+        int hr = 0, m = 0, s = 0;
+        if (ms >= 3600_000) {
+            hr = ms / 3600_000;
+            ms %= 3600_000;
+        }
+        if (ms >= 60_000) {
+            m = ms / 60_000;
+            ms %= 60_000;
+        }
+        if (ms > 0) {
+            s = ms / 1000;
+            ms %= 1000;
+        }
+        return new Timecode(hr, m, s, ms);
     }
 
     public static Timecode fromFrames(int frames, double fps) {
