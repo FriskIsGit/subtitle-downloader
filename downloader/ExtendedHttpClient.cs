@@ -6,12 +6,13 @@ namespace subtitle_downloader.downloader;
 
 public class ExtendedHttpClient : HttpClient {
     private const string USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130";
+    private const int MAX_REDIRECTS = 2;
 
     public ExtendedHttpClient(HttpMessageHandler handler, bool disposeHandler = true) : base(handler, disposeHandler) {
         
     }
     
-    public SimpleResponse get(string url) {
+    public SimpleResponse get(string url, int redirect = 0) {
         var getRequest = new HttpRequestMessage {
             RequestUri = new Uri(url),
             Method = HttpMethod.Get
@@ -19,10 +20,22 @@ public class ExtendedHttpClient : HttpClient {
         getRequest.Headers.UserAgent.ParseAdd(USER_AGENT);
         
         var response = Send(getRequest);
-        HttpStatusCode code = response.StatusCode;
+        if (isRedirect(response)) {
+            int nextRedirect = redirect+1;
+            if (nextRedirect > MAX_REDIRECTS) {
+                string lastContent = response.Content.ReadAsStringAsync().Result;
+                return new SimpleResponse(response.StatusCode, lastContent);
+            }
+            return get(response.Headers.Location!.ToString(), nextRedirect);
+        }
         string content = response.Content.ReadAsStringAsync().Result;
-        return new SimpleResponse(code, content);
-    } 
+        return new SimpleResponse(response.StatusCode, content);
+    }
+
+    private static bool isRedirect(HttpResponseMessage response) {
+        var code = response.StatusCode;
+        return response.Headers.Location != null && code is HttpStatusCode.MovedPermanently or HttpStatusCode.Redirect;
+    }
     
     public SimpleResponse getJson(string url) {
         var getRequest = new HttpRequestMessage {

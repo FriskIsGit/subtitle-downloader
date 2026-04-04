@@ -328,7 +328,7 @@ class ProgramFlow {
     private List<SubtitleRow> scrapeSubtitles(string pageURL) {
         var response = openApi.getHtml(pageURL);
         if (response.isError()) {
-            Utils.FailExit("Failed to download subtitle");
+            Utils.FailExit("Failed to download subtitle, error code: " + response.statusCode);
         }
         string html = response.content;
         Console.WriteLine($"Scraping {pageURL}");
